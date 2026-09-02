@@ -268,6 +268,21 @@ def auftrag(heute):
     11:30 bis 16:00 Uhr" baute das Modell prompt neun Vernissagen im
     Wochenabstand. Die Erlaubnis musste bleiben (das Klavierdepot spielt IMPERIA
     am 14. UND am 22. August), das Aufloesen eines Zeitraums musste weg.
+
+    Der Absatz zum titel kam am 02.09.2026 dazu; vorher stand da nur "Titel
+    wortgetreu aus dem Text". Das Modell schrieb den Titel trotzdem nicht ab,
+    sondern BAUTE ihn aus mehreren Textstellen zusammen, und nachpruefen() warf
+    ihn dann zu Recht als "steht nicht im Text" weg. Bei kreativpioniere zweimal
+    beobachtet: den Rahmen 'Lesung zum Buch "..."' aus der Termin-Ueberschrift,
+    den Buchtitel aber aus dem Fliesstext weiter unten (der ihn anders
+    schreibt), dazu ein angehaengtes "von Katja Kosubek"; und
+    'Joanne Calmel singt und spielt: Amour & Resistance. Chants du monde
+    (Chanson / Weltmusik)' aus Kuenstlerin + Werktitel + Gattungsklammer. Jedes
+    Fragment stand fuer sich im Text, die Kombination nirgends.
+
+    Deshalb drei Verbote statt eines Gebots: nicht zusammensetzen, keinen Namen
+    voranstellen, keine Gattung anhaengen. Ein Gebot ("wortgetreu") laesst dem
+    Modell die Wahl, WAS es woertlich nimmt; die Verbote nehmen sie ihm.
     """
     return (
         f"Heute ist der {heute:%d.%m.%Y}. Lies den folgenden Text von einer "
@@ -275,7 +290,13 @@ def auftrag(heute):
         "zurueck. Der Text kann mehrere Unterseiten enthalten, jeweils "
         "eingeleitet durch eine Zeile '--- <adresse> ---'.\n\n"
         "Datum als JJJJ-MM-TT, Uhrzeit als HH:MM (leer lassen, wenn keine "
-        "angegeben ist), Titel wortgetreu aus dem Text.\n\n"
+        "angegeben ist).\n\n"
+        "titel ist EINE ZUSAMMENHAENGENDE Passage aus dem Text, Zeichen fuer "
+        "Zeichen abgeschrieben — mit Anfuehrungszeichen, mit Tippfehlern, ohne "
+        "Glaettung. Setze ihn NICHT aus mehreren Textstellen zusammen. Stelle "
+        "keinen Namen voran (wer auftritt, gehoert in kuenstler) und haenge "
+        "keine Gattungs- oder Spartenangabe an. Steht dieselbe Veranstaltung "
+        "mehrfach im Text, nimm die kuerzeste Passage, die sie benennt.\n\n"
         "kuenstler ist, wer auftritt — Person oder Ensemble, wortgetreu aus "
         "dem Text ('Petra Gack', 'Ensemble-Akademie Freiburg'). Nicht der "
         "Veranstalter, nicht der Komponist. Leer lassen, wenn niemand genannt "
