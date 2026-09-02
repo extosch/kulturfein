@@ -1,0 +1,1203 @@
+#!/usr/bin/env python3
+"""Konfektioniert einen claude-Aufruf: Domain rein, klassifizierte Termine raus.
+
+EIGENSTAENDIG. Keine Projektmodule, nur requests und BeautifulSoup. Die Datei
+laesst sich woandershin kopieren und laeuft dort.
+
+Der ganze Zweck ist, EINEN Aufruf sauber zu konfektionieren — Kontext, Modell,
+Bedingungen an Lauf und Ausgabe — und sonst nichts. Gemessen am 26.08.2026 gegen
+find_dates_in_page.py, das denselben Fall ueber die volle Claude-Code-Umgebung
+liest:
+
+    find_dates_in_page.py   12.403 ein /  3.693 aus /  0,0448 USD
+    dieses Skript            2.593 ein /    301 aus /  0,0058 USD
+
+Vier Vorkehrungen bewirken das. Eine interaktive Sitzung im Projektordner traegt
+43.300 Token mit sich; davon bleiben hier 2.593:
+
+    --tools ""             wirft 23.800 Token Werkzeugbeschreibungen weg
+    --system-prompt TEXT   ersetzt 5.200 Token Claude-Code-Systemprompt
+    cwd ausserhalb des     verhindert, dass die CLAUDE.md-Dateien des Projekts
+    Projektordners         gefunden werden (4.700 Token)
+    MAX_THINKING_TOKENS=0  schaltet das Nachdenken ab
+
+Die letzte Zeile ist die ueberraschendste. Gleicher Text, gleicher Auftrag:
+
+    ohne Daempfung         11.049 Denk-Token, 0,0606 USD, 2 Termine
+    --effort low            5.248 Denk-Token, 0,0316 USD, 2 Termine
+    MAX_THINKING_TOKENS=0       0 Denk-Token, 0,0058 USD, 4 Termine
+
+Das Nachdenken kostet nicht nur das Zehnfache, es halbiert die Trefferquote.
+Termine aus einem Text abzuschreiben ist keine Denkaufgabe.
+
+Zwei Schalter, die einander nicht kennen: --json sagt WIE, --out sagt WOHIN.
+Daraus ergeben sich vier Faelle, ohne Sonderregel und ohne Negativ-Schalter.
+
+                    stdout                     Datei
+    lesbar          termine_aus_domain foo.de             termine_aus_domain foo.de --out x.txt
+    JSON            termine_aus_domain foo.de --json      termine_aus_domain foo.de --json --out x.json
+
+    termine_aus_domain klavierdepot-freiburg.de           # ueber .local/bin/termine_aus_domain
+    python termine_aus_domain.py foo.de        # oder direkt
+    termine_aus_domain foo.de --show-prompt               # an claude uebergebenen Prompt auf stderr
+    termine_aus_domain foo.de --verbose                   # Abruf und Datumsbelege auf stderr
+    termine_aus_domain foo.de --modell sonnet
+
+Ohne --out wird nichts geschrieben. Der Fehlerfall nimmt denselben Weg wie der
+Erfolg, damit --json und --out auch dann greifen.
+
+MEHRERE SEITEN, EIN AUFRUF. Am 26.08.2026 kam heraus, dass eine Startseite
+haeufig nicht genuegt: die Stiftung fuer Konkrete Kunst kuendigt auf der
+Startseite nur Ausstellungen an, ihre sechs Konzerte stehen unter
+/veranstaltungen/. Seither werden bis zu vier Unterseiten mitgelesen, rein
+heuristisch ausgewaehlt (Stichwort im Linktext oder Pfad, Archivjahre raus) und
+zu EINEM Modellaufruf zusammengehaengt. Klavierdepot-Links treffen kein
+Stichwort — dort bleibt es bei der einen Seite und beim alten Ergebnis.
+
+SOCIAL-HOSTS BRAUCHEN EINEN BROWSER. instagram.com zeigt Ausgeloggten fast
+nichts (im Test ueberall HTTP 429) und laedt Beitraege erst per angemeldetem
+XHR nach — der requests-Pfad bekaeme nur rund 54 Zeichen Titel. Fuer solche
+Hosts uebernimmt das optionale Modul social_holen.py: es steuert einen Chrome
+fern, der EINMAL VON HAND bei Instagram angemeldet wurde (tools/chrome-debug.cmd),
+und liefert Bio + die neuesten SOCIAL_POSTS Beitraege im selben
+'--- <adresse> ---'-Format. Laeuft dieser Chrome nicht, bricht der Aufruf mit
+klarer Meldung ab; --kein-browser erzwingt den requests-Pfad. Fehlt
+social_holen.py (Einzeldatei woandershin kopiert), bleibt alles beim Alten.
+
+DIE BELEGPRUEFUNG IST DA. Frueher wurde nur der Titel gegen den Text geprueft,
+das Datum nicht — und beim zweiten ernsthaften Fall meldete das Skript neun
+Vernissagen im Wochenabstand, konstruiert aus 'Ausstellung 13.09. bis 08.11.,
+geoeffnet sonntags'. Der Titel stimmte ja. Jetzt muss auch jedes Datum im Text
+stehen; datumsfunde() erkennt die gaengigen Schreibweisen samt Jahresergaenzung
+in rund dreissig Zeilen. Was --verbose daraus macht, ist der eigentliche Gewinn:
+zu jedem Termin das Umfeld seines Datums. Steht dort 'bis', war es ein Zeitraum;
+steht dort '11:30 Uhr', war es ein Termin.
+"""
+import argparse
+import datetime as dt
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from urllib.parse import urljoin, urlparse
+
+import requests
+from bs4 import BeautifulSoup
+
+try:                                    # optional, nur fuer Social-Hosts (Instagram)
+    import social_holen                 # Sibling in tools/ -- fehlt bei Einzeldatei-Kopie
+except ImportError:
+    social_holen = None
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
+
+ZEITLIMIT = 180        # Sekunden je claude-Aufruf
+ABRUF_TIMEOUT = 20     # Sekunden je Seitenabruf
+MAX_ZEICHEN = 30000    # Obergrenze, damit ein Ausreisser nicht 100.000 Token schickt
+MAX_UNTERSEITEN = 4    # zusaetzlich zur Startseite, also hoechstens 5 Abrufe je Domain
+MINDESTPUNKTE = 3      # ein Stichwort im Linktext; ein Ordnername allein reicht nicht
+KONTEXT_ZEICHEN = 55   # Umfeld je Belegstelle in der --verbose-Ausgabe
+MAX_BELEGSTELLEN = 3   # mehr Fundstellen je Datum sagen nichts Neues
+BESCHREIBUNG_MAX = 180 # Sicherheitsnetz: der Prompt bittet um 150, das ist die harte Grenze
+BESCHREIBUNG_DECKUNG = 0.6  # so viel der Inhaltswoerter muss im Seitentext stehen (Erfindungs-Untergrenze)
+SOCIAL_POSTS = 4       # Instagram: so viele der neuesten Beitraege lesen (social_holen)
+BROWSER_PORT = 9222    # Chrome-Debug-Port fuer social_holen
+
+# Woran eine Termin-Unterseite zu erkennen ist. Geprueft wird gegen Linktext UND
+# URL-Pfad. Zwei Klassen, und der Unterschied traegt die ganze Auswahl:
+#
+# STARK   benennt eine Terminliste. Wer einen Link "Veranstaltungen" nennt,
+#         meint eine Liste von Veranstaltungen. Reicht fuer sich allein.
+# SCHWACH benennt ein Thema. "Ausstellungen" kann die Uebersicht sein oder eine
+#         Zeile in "Biographische Daten, Ausstellungen" — bei der Stiftung fuer
+#         Konkrete Kunst war genau das eine 3.771 Zeichen lange Lebenslaufseite
+#         ohne einen einzigen kuenftigen Termin. Ein schwaches Wort braucht
+#         deshalb Bestaetigung im Pfad.
+#
+# Bewusst nur deutsche und die gelaeufigen englischen Woerter — was hier fehlt,
+# faellt durch, und das ist billiger als eine Liste, die halb Freiburg einsammelt.
+#
+# "tour" kam am 01.09.2026 dazu: murat-coskun.eu fuehrt auf der Startseite nur
+# vier Termine, die vollstaendige Liste steht unter /on-tour — ohne Stichwort
+# nie gelesen. Der vorhersehbare Fehltreffer (Tourist-Info, Tourismus) ist
+# ueber NIE_TERMINE ausgeschlossen.
+STARKE_STICHWORTE = ("veranstaltung", "termin", "konzert", "programm",
+                     "kalender", "spielplan", "agenda", "spielzeit", "tour")
+SCHWACHE_STICHWORTE = ("ausstellung", "aktuelles", "vorschau", "event",
+                       "saison", "auffuehrung", "aufführung", "lesung",
+                       "vernissage", "repertoire")
+STICHWORTE = STARKE_STICHWORTE + SCHWACHE_STICHWORTE
+
+# Endungen, hinter denen kein lesbarer Text steckt.
+KEINE_SEITE = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".svg", ".zip",
+               ".doc", ".docx", ".xls", ".xlsx", ".mp3", ".mp4", ".ics")
+
+# Woerter, die einen Link unabhaengig von allen Stichworten disqualifizieren.
+# Der Vorderhaus verlinkt 'Newsletter abonnieren' mit einem Text, in dem
+# 'Programm' und 'Konzerte' vorkommen — der Link schlug damit den echten
+# Veranstaltungskalender. Eine Newsletter-Anmeldung ist nie eine Terminliste,
+# egal wie sie beschriftet ist.
+NIE_TERMINE = ("newsletter", "impressum", "datenschutz", "kontakt", "anfahrt",
+               "agb", "spenden", "mitglied", "sponsor", "presse", "archiv",
+               "rueckblick", "rückblick", "login", "warenkorb", "suche",
+               "tourist", "tourismus")   # Gegengewicht zum Stichwort "tour"
+
+# Jahreszahl in Pfad oder Linktext. Die Stiftung verlinkt eine Jahresnavigation
+# von veranstaltungen_1999_2000.html bis veranstaltungen_2025.html — ohne diesen
+# Filter kaemen zwanzig Archivseiten mit.
+JAHR_IM_TEXT = re.compile(r"(19|20)\d{2}")
+
+# Ehrlicher Abrufkopf mit Kontaktadresse — dieselbe Haltung wie im uebrigen Projekt.
+KOPFZEILEN = {"User-Agent": "kulturfein/1.0 (+mailto:info@exergia.de)"}
+
+# Leerer Ordner ausserhalb des Projekts. Wird claude von hier aus gestartet,
+# findet es keine CLAUDE.md.
+ARBEITSORDNER = os.path.join(tempfile.gettempdir(), "kulturfein_claude_cwd")
+
+# Siehe Kopf: ohne das denkt Haiku teuer und findet weniger.
+OHNE_DENKEN = {"MAX_THINKING_TOKENS": "0"}
+
+# Geschlossene Liste. Ohne Aufzaehlung erfindet das Modell Kategorien wie
+# "Musiktheater" oder "Kulturveranstaltung", und die Auswertung zerfaellt.
+# Umlaute sind umschrieben, weil der Auftrag als Kommandozeilenargument
+# uebergeben wird und die Windows-Kommandozeile daran haengenbleiben kann.
+_GENRES_STANDARD = ["Tanz", "Buehne", "Vortrag", "Spirituell", "Ausstellung",
+                    "Konzert", "Lesung", "Workshop", "Sonstiges"]
+
+
+def _lade_genres():
+    """genres.md neben diesem Skript, sonst _GENRES_STANDARD.
+
+    Haelt EIGENSTAENDIG (siehe Dateikopf) aufrecht: kopiert man nur diese eine
+    Datei irgendwohin, laeuft sie trotzdem, mit demselben Standard, der vorher
+    hart codiert war. Nur im Projekt selbst (genres.md danebenliegend) wird
+    die Liste editierbar.
+    """
+    pfad = os.path.join(os.path.dirname(os.path.abspath(__file__)), "genres.md")
+    if not os.path.exists(pfad):
+        return _GENRES_STANDARD
+    with open(pfad, encoding="utf-8") as datei:
+        werte = [w for zeile in datei if (w := zeile.split("#", 1)[0].strip())]
+    return werte or _GENRES_STANDARD
+
+
+GENRES = _lade_genres()
+
+
+# ------------------------------------------------------------------ Region
+
+# "Freiburg und Umgebung": nachpruefen() verwirft einen Termin, dessen `ort`
+# keinen Namen aus eingaben/region.md nennt. FEHLT die Datei, bleibt der Filter
+# AUS -- eine einzeln kopierte termine_aus_domain.py verhaelt sich dann wie
+# zuvor (siehe "EIGENSTAENDIG" im Dateikopf). Nur im Projekt, wo die Liste
+# liegt, greift die strenge Regionspruefung.
+REGION_DATEI = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "eingaben", "region.md")
+REGION_LEERER_ORT_OK = False   # True -> Termin ohne jede Ortsangabe trotzdem behalten
+
+
+def _lade_region():
+    """eingaben/region.md -> [ortsname, ...]; leere Liste, wenn die Datei fehlt.
+
+    Ein Name je Zeile, '#' kommentiert, '##' gliedert -- dasselbe Format wie
+    domains.md. Leere Liste heisst: kein Regionsfilter (siehe REGION_DATEI).
+    """
+    if not os.path.exists(REGION_DATEI):
+        return []
+    with open(REGION_DATEI, encoding="utf-8") as datei:
+        return [n for zeile in datei if (n := zeile.split("#", 1)[0].strip())]
+
+
+REGION = _lade_region()
+
+
+def _in_region(ort):
+    """Nennt `ort` einen Namen aus REGION? -> bool
+
+    Teilstring auf der normalisierten Form (klein, Typografie geglaettet), damit
+    'Kath. Pfarrkirche St. Peter' den Eintrag 'St. Peter' trifft und 'PILSEN
+    (CZ)' keinen. Ohne REGION ist die Frage gegenstandslos -- nachpruefen()
+    ruft dann gar nicht erst.
+    """
+    o = _normal(ort)
+    return any(_normal(name) in o for name in REGION)
+
+
+SYSTEMPROMPT = ("Du liest Text von Veranstalter-Websites und gibst Termine als "
+                "JSON zurueck. Antworte ausschliesslich mit JSON, ohne Vorrede "
+                "und ohne Code-Zaun.")
+
+SCHEMA = json.dumps({
+    "type": "object",
+    "properties": {
+        "termine": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "datum": {"type": "string"},
+                    "uhrzeit": {"type": "string"},
+                    "titel": {"type": "string"},
+                    "kuenstler": {"type": "string"},
+                    "ort": {"type": "string"},
+                    "beschreibung": {"type": "string"},
+                    "genre": {"type": "string", "enum": GENRES},
+                    "fundstelle": {"type": "string"},
+                },
+                "required": ["datum", "titel", "genre"],
+            },
+        }
+    },
+    "required": ["termine"],
+}, ensure_ascii=False)
+
+
+def auftrag(heute):
+    """Der Prompt. Was KEIN Termin ist, steht ausdruecklich drin — genau die
+    Faelle, fuer die sonst Regexe entstehen.
+
+    Der Absatz ueber Zeitraeume kam am 26.08.2026 dazu. Vorher stand da
+    "Wiederholt sich eine Veranstaltung an mehreren Tagen, gib jeden Tag einzeln
+    zurueck" — und aus "13.09.2026 bis 08.11.2026 ... Geoeffnet: Sonntags von
+    11:30 bis 16:00 Uhr" baute das Modell prompt neun Vernissagen im
+    Wochenabstand. Die Erlaubnis musste bleiben (das Klavierdepot spielt IMPERIA
+    am 14. UND am 22. August), das Aufloesen eines Zeitraums musste weg.
+    """
+    return (
+        f"Heute ist der {heute:%d.%m.%Y}. Lies den folgenden Text von einer "
+        "Veranstalter-Website und gib alle ANGEKUENDIGTEN Veranstaltungen "
+        "zurueck. Der Text kann mehrere Unterseiten enthalten, jeweils "
+        "eingeleitet durch eine Zeile '--- <adresse> ---'.\n\n"
+        "Datum als JJJJ-MM-TT, Uhrzeit als HH:MM (leer lassen, wenn keine "
+        "angegeben ist), Titel wortgetreu aus dem Text.\n\n"
+        "kuenstler ist, wer auftritt — Person oder Ensemble, wortgetreu aus "
+        "dem Text ('Petra Gack', 'Ensemble-Akademie Freiburg'). Nicht der "
+        "Veranstalter, nicht der Komponist. Leer lassen, wenn niemand genannt "
+        "ist.\n\n"
+        "ort (Veranstaltungsort) wortgetreu aus dem Text, leer lassen, wenn "
+        "keiner angegeben ist.\n\n"
+        "beschreibung fasst zusammen, WAS die Veranstaltung ist — Art, Thema, "
+        "Anlass, Rahmen, Ort (hoechstens 150 Zeichen, ganze Saetze). Nenne "
+        "darin KEINE Personennamen und KEINE Instrumente; wer auftritt, steht "
+        "in kuenstler. So kann keine Besetzung verdreht werden. Keine "
+        "Werbefloskeln, keine Ausrufezeichen. Leer lassen, wenn der Text "
+        "nichts hergibt.\n\n"
+        "genre ist genau einer dieser Werte:\n"
+        + " | ".join(GENRES) + "\n\n"
+        "fundstelle ist die Adresse aus der Zeile '--- <adresse> ---', die ueber "
+        "dem Textabschnitt steht, in dem dieser Termin vorkommt. Kopiere sie "
+        "wortgetreu. Steht der Termin in mehreren Abschnitten, nimm den mit den "
+        "meisten Details. Nur eine der '--- <adresse> ---'-Zeilen, nichts "
+        "anderes.\n\n"
+        "Jedes zurueckgegebene Datum muss WORTWOERTLICH im Text stehen. Rechne "
+        "nichts aus. Ein Zeitraum ('13.09.2026 bis 08.11.2026') ist EINE Angabe "
+        "und keine Reihe von Einzelterminen — loese ihn nicht in Wochentage auf. "
+        "Wiederkehrende Oeffnungszeiten ('Sonntags von 11:30 bis 16:00 Uhr') "
+        "sind kein Termin. Sind fuer dieselbe Veranstaltung mehrere Daten "
+        "einzeln genannt, gib jedes davon zurueck.\n\n"
+        "KEINE Veranstaltung sind: Nachrichten und Meldungen, Rueckblicke auf "
+        "Vergangenes, Ausstellungsdauern, Oeffnungszeiten, Jahresarchive "
+        "vergangener Spielzeiten, Pressemitteilungen, Anfahrtshinweise, "
+        "Preisangaben.\n\n"
+        "Erfinde nichts. Steht kein Termin im Text, gib eine leere Liste zurueck."
+    )
+
+
+# ------------------------------------------------------------------ Seiten holen
+
+def _lies(antwort):
+    """Antwort -> (text, suppe).
+
+    bytes statt .text: so liest lxml das Encoding aus dem Meta-Tag und die
+    Umlaute in den Titeln bleiben heil.
+    """
+    suppe = BeautifulSoup(antwort.content, "lxml")
+    for weg in suppe(["script", "style", "noscript"]):
+        weg.decompose()
+    return suppe.get_text(" ", strip=True), suppe
+
+
+def _hole_eine(adresse):
+    """Eine Adresse -> (text, suppe, endadresse). Wirft bei Misserfolg."""
+    antwort = requests.get(adresse, headers=KOPFZEILEN, timeout=ABRUF_TIMEOUT)
+    antwort.raise_for_status()
+    text, suppe = _lies(antwort)
+    return text, suppe, antwort.url
+
+
+def hole_startseite(ziel):
+    """Domain oder Adresse -> (text, suppe, endadresse). Wirft bei Misserfolg.
+
+    Manche Seiten laufen nur mit www., andere nur ohne — statt zu raten werden
+    beide Schemata und beide Varianten probiert. Die Endadresse NACH
+    Weiterleitungen kommt mit zurueck: klavierdepot-freiburg.de landet auf
+    petra-gack.de/klavierdepot, und ohne diese Angabe waere kein Fund nachpruefbar.
+    """
+    if ziel.startswith("http"):
+        kandidaten = [ziel]
+    else:
+        rumpf = ziel.rstrip("/")
+        kandidaten = [f"https://{rumpf}", f"https://www.{rumpf}",
+                      f"http://{rumpf}", f"http://www.{rumpf}"]
+
+    letzter = None
+    for kandidat in kandidaten:
+        try:
+            return _hole_eine(kandidat)
+        except Exception as fehler:
+            letzter = fehler
+    raise letzter or RuntimeError("keine Adresse antwortete")
+
+
+def waehle_unterseiten(suppe, startadresse, heute):
+    """Links der Startseite -> ([(adresse, [stichworte])], [(adresse, grund)]).
+    Kandidaten beste zuerst, dazu die am Jahresfilter gescheiterten.
+
+    Rein heuristisch, ohne Modellaufruf. Zwei Regeln entscheiden fast alles:
+
+    Stichworte in Linktext ODER Pfad — ein Link zaehlt so oft, wie er trifft.
+    'Veranstaltungen, Konzerte' auf /veranstaltungen/veranstaltungen_2026.html
+    trifft dreimal und landet vorn.
+
+    Jahresfilter — der eigentlich wichtige Teil. Die Stiftung fuer Konkrete Kunst
+    verlinkt eine Jahresnavigation von veranstaltungen_1999_2000.html bis
+    veranstaltungen_2025.html. Jede dieser Seiten trifft das Stichwort; ohne den
+    Filter kaemen zwanzig Archivseiten mit. Eine Jahreszahl kleiner als das
+    laufende Jahr disqualifiziert den Link.
+
+    Rueckgabe enthaelt die Stichworte und die Archiv-Ablehnungen, damit
+    --verbose die Auswahl begruenden kann statt sie nur zu behaupten. Links ohne
+    jedes Stichwort werden nicht einzeln gemeldet — das waeren bei jeder Seite
+    zwei Dutzend Zeilen Impressum und Datenschutz.
+    """
+    heimat = urlparse(startadresse).netloc.lower()
+    bewertet, abgelehnt, gesehen = [], [], {_ohne_anker(startadresse)}
+
+    for verweis in suppe.find_all("a", href=True):
+        ziel = verweis["href"].strip()
+        if not ziel or ziel.startswith(("#", "mailto:", "tel:", "javascript:")):
+            continue
+        adresse = _ohne_anker(urljoin(startadresse, ziel))
+        if adresse in gesehen:
+            continue
+        zerlegt = urlparse(adresse)
+        if zerlegt.scheme not in ("http", "https") or zerlegt.netloc.lower() != heimat:
+            continue
+        if zerlegt.path.lower().endswith(KEINE_SEITE):
+            continue
+
+        beschriftung = verweis.get_text(" ", strip=True).lower()[:120]
+        pfad = zerlegt.path.lower()
+        if any(wort in beschriftung or wort in pfad for wort in NIE_TERMINE):
+            continue
+        punkte, treffer = _bewerte(beschriftung, pfad)
+        if punkte < MINDESTPUNKTE:
+            continue
+        gesehen.add(adresse)
+        archivjahr = _ist_archiv(pfad, beschriftung, heute)
+        if archivjahr:
+            abgelehnt.append((adresse, f"Archiv, Jahr {archivjahr} "
+                                       f"< {heute.year}"))
+            continue
+        bewertet.append((adresse, punkte, treffer))
+
+    bewertet.sort(key=lambda eintrag: eintrag[1], reverse=True)
+    return [(adresse, treffer) for adresse, _, treffer in bewertet], abgelehnt
+
+
+def _bewerte(beschriftung, pfad):
+    """Linktext und Pfad -> (punkte, [stichworte])
+
+    Der Linktext wiegt schwerer als der Pfad. Das ist der Unterschied zwischen
+    einer Terminliste und einem Archiv: 'Geladene Kuenstler' auf
+    /ausstellungen/kuenstler.html trifft nur ueber den Ordnernamen — und ist eine
+    11.000 Zeichen lange Namensliste seit 1999, die beim ersten Versuch das halbe
+    Zeichenbudget frass.
+
+    Ein starkes Wort im Linktext genuegt (3 Punkte). Ein schwaches bringt 2 und
+    braucht den Pfad dazu, um ueber MINDESTPUNKTE zu kommen — so kommt
+    'Ausstellungen' auf /ausstellungen/ durch, 'Biographische Daten,
+    Ausstellungen' auf /phleps/ dagegen nicht.
+
+    Tiefe Pfade kosten Punkte. /ausstellungen/2026_weihs/weihs_wo_15_2016.html
+    ist eine Bildseite, keine Uebersicht.
+    """
+    treffer = sorted({wort for wort in STICHWORTE
+                      if wort in beschriftung or wort in pfad})
+    punkte = 0
+    for wort in treffer:
+        if wort in beschriftung:
+            punkte += 3 if wort in STARKE_STICHWORTE else 2
+        if wort in pfad:
+            punkte += 1
+    tiefe = len([teil for teil in pfad.split("/") if teil])
+    return punkte - max(0, tiefe - 2), treffer
+
+
+def _ohne_anker(adresse):
+    """Adresse ohne #fragment — sonst gilt seite.html#oben als eigene Seite."""
+    return adresse.split("#", 1)[0].rstrip("/") or adresse
+
+
+def _ist_archiv(pfad, beschriftung, heute):
+    """Traegt EIN Pfadsegment oder der Linktext nur Jahreszahlen, die AELTER
+    als das laufende Jahr sind? -> das gefundene Jahr, sonst None
+
+    Fruehere Fassung pruefte max(jahre) ueber den GANZEN Pfad und brach bei
+    St. Peter: die Seite haengt Altjahre unter den laufenden Ordner
+    (/orgelkonzerte-2026/orgelkonzerte-2019/...) — ueber den gesamten Pfad
+    gerechnet gewinnt 2026, und eine 10.121 Zeichen lange Archivseite von
+    2019 kam durch und verdraengte zwei echte 2026er-Kandidaten aus dem
+    Zeichenbudget.
+
+    Segmentweise erkennt das 2019er-Segment fuer sich, unabhaengig vom
+    Elternordner. 'veranstaltungen_2020_2021.html' (ein Segment, zwei
+    Jahre) ist Archiv. 'spielzeit-2025-2026' (ein Segment, gemischt) ist
+    keins — das ist der Grund, nicht einfach min(jahre) zu nehmen. Ein
+    Segment ohne Jahreszahl ist kein Archiv — im Zweifel wird gelesen, nicht
+    verworfen.
+    """
+    for segment in pfad.split("/") + [beschriftung]:
+        jahre = [int(m.group()) for m in JAHR_IM_TEXT.finditer(segment)]
+        if jahre and max(jahre) < heute.year:
+            return max(jahre)
+    return None
+
+
+def sammle_seiten(ziel, heute, protokoll=None, *, kein_browser=False,
+                  browser_port=BROWSER_PORT):
+    """Domain -> (gesamttext, startadresse, [(adresse, zeichen)]).
+
+    Startseite plus bis zu MAX_UNTERSEITEN Termin-Seiten, zu EINEM Text
+    zusammengehaengt. Ein Modellaufruf statt fuenf: bei ~2.000 Zeichen je Seite
+    bleibt das weit unter MAX_ZEICHEN, und fuenf Aufrufe kosteten das Fuenffache
+    an Systemprompt und Auftrag.
+
+    Ein Textabschnitt beginnt mit '--- <adresse> ---'. Der Auftrag erklaert dem
+    Modell diese Zeile; sie kostet ein Dutzend Token und macht im Zweifel
+    nachvollziehbar, woher ein Fund stammt.
+
+    Deduplizierung ueber einen Hash des Textes, nicht ueber die Adresse: bei der
+    Stiftung liefern veranstaltungen/index.html und
+    veranstaltungen/veranstaltungen_2026.html denselben Text, und der waere sonst
+    zweimal bezahlt.
+
+    SOCIAL-HOSTS gehen einen eigenen Weg (siehe Dateikopf): ist der Host bei
+    social_holen bekannt und --kein-browser nicht gesetzt, liefert das Modul den
+    Text aus einem ferngesteuerten Chrome, formgleich zurueck. social_holen fehlt
+    (Einzeldatei-Kopie) oder --kein-browser -> normaler requests-Pfad.
+    """
+    def melde(zeile):
+        if protokoll is not None:
+            protokoll.append(zeile)
+
+    if social_holen and not kein_browser and social_holen.ist_social(ziel):
+        melde(f"  {ziel}  Social-Host, lese ueber Chrome auf :{browser_port}")
+        return social_holen.hole(ziel, heute, MAX_ZEICHEN, browser_port,
+                                 melde, SOCIAL_POSTS)
+
+    text, suppe, startadresse = hole_startseite(ziel)
+    melde(f"  {startadresse}  {len(text)} Z  (Startseite)")
+
+    abschnitte = [f"--- {startadresse} ---\n{text}"]
+    gelesen = [(startadresse, len(text))]
+    bekannt = {hashlib.sha1(text.encode("utf-8")).hexdigest()}
+    uebrig = MAX_ZEICHEN - len(abschnitte[0])
+
+    kandidaten, abgelehnt = waehle_unterseiten(suppe, startadresse, heute)
+    melde(f"  {len(suppe.find_all('a', href=True))} Links geprueft, "
+          f"{len(kandidaten)} Kandidaten, {len(abgelehnt)} per Jahresfilter "
+          f"verworfen, hoechstens {MAX_UNTERSEITEN} gelesen")
+    for adresse, grund in abgelehnt:
+        melde(f"  {adresse}  - {grund}")
+    for adresse, treffer in kandidaten[MAX_UNTERSEITEN:]:
+        melde(f"  {adresse}  - nachrangig ({', '.join(treffer)})")
+    for adresse, treffer in kandidaten[:MAX_UNTERSEITEN]:
+        if uebrig <= 0:
+            melde(f"  {adresse}  uebersprungen (Zeichenbudget erschoepft)")
+            continue
+        try:
+            unterseite, _, endadresse = _hole_eine(adresse)
+        except Exception as fehler:
+            melde(f"  {adresse}  nicht erreichbar: {type(fehler).__name__}")
+            continue
+
+        fingerabdruck = hashlib.sha1(unterseite.encode("utf-8")).hexdigest()
+        if fingerabdruck in bekannt:
+            melde(f"  {adresse}  gleicher Text wie zuvor, uebersprungen")
+            continue
+        bekannt.add(fingerabdruck)
+
+        kopf = f"--- {endadresse} ---\n"
+        stueck = unterseite[:max(0, uebrig - len(kopf))]
+        abschnitte.append(kopf + stueck)
+        gelesen.append((endadresse, len(stueck)))
+        uebrig -= len(kopf) + len(stueck)
+        melde(f"  {endadresse}  {len(stueck)} Z  + {', '.join(treffer)}")
+
+    return "\n\n".join(abschnitte), startadresse, gelesen
+
+
+# -------------------------------------------------------------- claude rufen
+
+def _json_herausschneiden(rohtext):
+    """Das erste vollstaendige {...} aus einem Text. -> str oder ''
+
+    Trotz --json-schema zaeunt das Modell die Antwort gern mit ```json ein. Statt
+    darauf zu vertrauen, wird geschnitten.
+    """
+    anfang = rohtext.find("{")
+    if anfang < 0:
+        return ""
+    tiefe, in_text, geschuetzt = 0, False, False
+    for i in range(anfang, len(rohtext)):
+        z = rohtext[i]
+        if geschuetzt:
+            geschuetzt = False
+        elif z == "\\":
+            geschuetzt = True
+        elif z == '"':
+            in_text = not in_text
+        elif not in_text:
+            if z == "{":
+                tiefe += 1
+            elif z == "}":
+                tiefe -= 1
+                if tiefe == 0:
+                    return rohtext[anfang:i + 1]
+    return ""
+
+
+def claude_fragen(text, heute, modell="haiku"):
+    """Der konfektionierte Aufruf. -> (funde, kennzahlen)
+
+    Hier steckt der ganze Zweck des Skripts: Kontext, Modell, Bedingungen an Lauf
+    und Ausgabe an einer Stelle, nachlesbar und aenderbar.
+    """
+    os.makedirs(ARBEITSORDNER, exist_ok=True)
+    befehl = ["claude", "-p", auftrag(heute),
+              "--system-prompt", SYSTEMPROMPT,   # ersetzt den Claude-Code-Prompt
+              "--output-format", "json",
+              "--json-schema", SCHEMA,           # erzwingt die Felder
+              "--model", modell,
+              "--tools", "",                     # keine Werkzeugbeschreibungen
+              "--no-session-persistence"]
+    try:
+        lauf = subprocess.run(befehl, input=text, capture_output=True, text=True,
+                              encoding="utf-8", timeout=ZEITLIMIT,
+                              cwd=ARBEITSORDNER,          # weg vom Projektordner
+                              env=dict(os.environ, **OHNE_DENKEN))
+    except FileNotFoundError:
+        print("FEHLER: 'claude' ist nicht im Pfad. Ohne Claude Code laeuft "
+              "dieses Werkzeug nicht.", file=sys.stderr)
+        return None, {}
+    except subprocess.TimeoutExpired:
+        print(f"FEHLER: keine Antwort binnen {ZEITLIMIT} s.", file=sys.stderr)
+        return None, {}
+
+    if lauf.returncode != 0:
+        print(f"FEHLER: claude endete mit {lauf.returncode}\n"
+              f"{(lauf.stderr or '')[:400]}", file=sys.stderr)
+        return None, {}
+
+    try:
+        antwort = json.loads(lauf.stdout)
+    except json.JSONDecodeError:
+        print(f"FEHLER: Antwort ist kein JSON:\n{lauf.stdout[:300]}", file=sys.stderr)
+        return None, {}
+
+    inhalt = antwort.get("structured_output") or {}
+    if not inhalt and antwort.get("result"):
+        geschnitten = _json_herausschneiden(antwort["result"])
+        try:
+            inhalt = json.loads(geschnitten) if geschnitten else {}
+        except json.JSONDecodeError:
+            inhalt = {}
+
+    nutzung = antwort.get("usage", {})
+    kennzahlen = {
+        "kosten": round(antwort.get("total_cost_usd", 0.0), 6),
+        "ein": nutzung.get("input_tokens", 0)
+              + nutzung.get("cache_creation_input_tokens", 0)
+              + nutzung.get("cache_read_input_tokens", 0),
+        "aus": nutzung.get("output_tokens", 0),
+    }
+    return inhalt.get("termine", []), kennzahlen
+
+
+# --------------------------------------------------------------- Datumsbelege
+
+# Drei Schreibweisen. Um jeden Trenner steht \s*, und das ist keine Kosmetik:
+# das Klavierdepot schreibt "Freitag 14.August 2026 - 20h", OHNE Leerzeichen
+# nach dem Punkt. Eine Suche nach fertigen Zeichenketten ("14. August 2026")
+# haette dort alle vier echten Termine verworfen.
+DATUM_NUMERISCH = re.compile(r"(\d{1,2})\s*\.\s*(\d{1,2})\s*\.\s*(\d{4}|\d{2})?")
+DATUM_MONATSNAME = re.compile(
+    r"(\d{1,2})\s*\.?\s*"
+    r"(jan|feb|mär|maer|mrz|apr|mai|jun|jul|aug|sep|okt|nov|dez)[a-zä]*\.?"
+    r"\s*(\d{4})?", re.IGNORECASE)
+DATUM_ISO = re.compile(r"(\d{4})-(\d{1,2})-(\d{1,2})")
+
+# Die vierte Form hat kein eigenes Datum, sondern eine Ueberschrift: Kalender
+# schreiben "Oktober 27" und darunter nur noch die nackten Tage. Der Vorderhaus
+# macht das, und ohne diese Regel hielt der Scanner alle 43 dort gemeldeten
+# Termine fuer erfunden — das Modell hatte recht, die Pruefung war blind.
+#
+# Zwei Einschraenkungen, beide gemessen:
+#
+# Volle Wortgrenzen, sonst findet "mai" sein Monatsende in "Mainz".
+#
+# Kein Monatskopf, wenn eine Tageszahl davorsteht. "14.August 2026" beim
+# Klavierdepot ist ein vollstaendiges Datum, keine Ueberschrift — als Kopf
+# gelesen faerbte es den Rest der Seite ein und machte aus "- 20h" den 20.08.
+MONATSKOPF = re.compile(
+    r"(?<![\d.])\b(januar|februar|märz|maerz|april|mai|juni|juli|august|"
+    r"september|oktober|november|dezember|jan|feb|mrz|apr|jun|jul|aug|sept|"
+    r"sep|okt|nov|dez)\.?\s+((?:19|20)?\d{2})\b", re.IGNORECASE)
+
+# Alleinstehend heisst: kein Zeichen eines groesseren Ausdrucks daneben. Ohne
+# den Buchstabenausschluss wird die Uhrzeit "20h" zum zwanzigsten des Monats.
+NACKTER_TAG = re.compile(r"(?<![\w.,:/-])(\d{1,2})(?![\w.,:/-])")
+
+MONATSNUMMER = {"jan": 1, "feb": 2, "mär": 3, "maer": 3, "mrz": 3, "apr": 4,
+                "mai": 5, "jun": 6, "jul": 7, "aug": 8, "sep": 9, "okt": 10,
+                "nov": 11, "dez": 12}
+
+
+def _mit_jahr(tag, monat, jahr, heute):
+    """Tag/Monat/Jahr -> [date, ...]. Ergaenzt ein fehlendes Jahr.
+
+    Fruehere Fassung waehlte bei fehlendem Jahr EIN Jahr ('das naechste, in dem
+    der Tag nicht vergangen ist') und warf den anderen Kandidaten weg. Das
+    brach bei St. Peter: die Konzertreihe steht jahreslos ('23.08.', '30.08.'
+    ...), und alles VOR dem Stichtag landete falsch im Folgejahr — am
+    26.08.2026 galt '23.08.' als '2027-08-23' und damit als unbelegt, ein
+    echter Termin fiel durch die Nachpruefung.
+
+    datumsfunde() ist eine Existenzpruefung, keine Interpretation: sie muss
+    nur wissen, ob IRGENDEIN Jahr zur Textstelle passt, nicht welches das
+    Modell gemeint hat. Deshalb jetzt beide Kandidaten zurueckgeben, wenn kein
+    Jahr im Text stand.
+    """
+    kandidaten = [jahr] if jahr else [heute.year, heute.year + 1]
+    gefunden = []
+    for versuch in kandidaten:
+        try:
+            gefunden.append(dt.date(versuch, monat, tag))
+        except ValueError:
+            pass
+    return gefunden
+
+
+def datumsfunde(text, heute):
+    """Alle Datumsangaben des Textes -> {date: [(anfang, ende), ...]}
+
+    ALLE Stellen je Datum, nicht nur die erste. Das ist keine Kleinigkeit: der
+    08.11.2026 steht bei der Stiftung zweimal — auf der Startseite als Ende einer
+    Ausstellungsdauer ('13.09.2026 bis 08.11.2026') und auf der
+    Veranstaltungsseite als der Konzerttermin, um den es geht. Wer nur die erste
+    Stelle zeigt, behauptet dem Leser gegenueber das Falsche.
+
+    Die Positionen kommen mit, weil --verbose daraus das Umfeld schneidet. Genau
+    dieses Umfeld ist die Diagnose: steht hinter dem Beleg ein 'bis', war es ein
+    Zeitraum; steht dort '11:30 Uhr', war es ein Termin.
+    """
+    funde = {}
+
+    def merke(daten, spanne):
+        """daten: Liste moeglicher Kandidaten fuer dieselbe Textstelle (siehe
+        _mit_jahr) — bei fehlendem Jahr mehr als einer, sonst genau einer."""
+        for datum in daten:
+            funde.setdefault(datum, []).append(spanne)
+
+    for treffer in DATUM_NUMERISCH.finditer(text):
+        tag, monat, jahr = int(treffer[1]), int(treffer[2]), treffer[3]
+        if jahr:
+            jahr = int(jahr) if len(jahr) == 4 else 2000 + int(jahr)
+        merke(_mit_jahr(tag, monat, jahr, heute), treffer.span())
+
+    for treffer in DATUM_MONATSNAME.finditer(text):
+        monat = MONATSNUMMER.get(treffer[2].lower()[:4],
+                                 MONATSNUMMER.get(treffer[2].lower()[:3]))
+        if not monat:
+            continue
+        jahr = int(treffer[3]) if treffer[3] else None
+        merke(_mit_jahr(int(treffer[1]), monat, jahr, heute), treffer.span())
+
+    for treffer in DATUM_ISO.finditer(text):
+        merke(_mit_jahr(int(treffer[3]), int(treffer[2]), int(treffer[1]), heute),
+              treffer.span())
+
+    for datum, spanne in _unter_monatskoepfen(text):
+        merke([datum], spanne)
+
+    for datum, spanne in _tage_vor_monat(text, heute):
+        merke([datum], spanne)
+
+    # Die Regexe laufen nacheinander, also nicht in Textreihenfolge, und
+    # koennen dieselbe Stelle doppelt melden.
+    return {datum: sorted(set(stellen)) for datum, stellen in funde.items()}
+
+
+# "8., 9. und 10. Oktober": Tageszahlen VOR einem Monatsnamen, nur durch
+# Aufzaehlungszeichen (',', '&', 'und', 'sowie') getrennt, gehoeren zu diesem
+# Monat. Bewusst NICHT 'bis' oder '-': ein Zeitraum wird nicht in Einzeltage
+# zerlegt (siehe Prompt), eine Aufzaehlung schon.
+TAG_AUFZAEHLUNG = re.compile(
+    r"(?:\d{1,2}\s*\.\s*(?:,|&|und|sowie|\s)*)+$", re.IGNORECASE)
+
+
+def _tage_vor_monat(text, heute):
+    """'8., 9. und 10. Oktober 2026' -> Belege fuer den 8. und 9.
+
+    DATUM_MONATSNAME findet nur den letzten Tag ('10. Oktober'). Die Tageszahlen
+    davor, nur durch ',', '&', 'und', 'sowie' getrennt, teilen sich Monat und
+    Jahr des Ankers -- der Veranstalter schreibt die Reihe einmal aus. Bei
+    betz.lucie stand 'am 8., 9. und 10. Oktober' im Text, das Modell gab alle
+    drei zurueck, aber die Belegpruefung kannte nur den 10. und verwarf die
+    anderen zwei zu Unrecht. 'bis'/'-' zaehlt NICHT als Trenner.
+    """
+    gefunden = []
+    for anker in DATUM_MONATSNAME.finditer(text):
+        monat = MONATSNUMMER.get(anker[2].lower()[:4],
+                                 MONATSNUMMER.get(anker[2].lower()[:3]))
+        if not monat:
+            continue
+        jahr = int(anker[3]) if anker[3] else None
+        anfang = max(0, anker.start() - 60)
+        kette = TAG_AUFZAEHLUNG.search(text[anfang:anker.start()])
+        if not kette:
+            continue
+        basis = anfang + kette.start()
+        for tag in re.finditer(r"(\d{1,2})\s*\.", kette.group()):
+            spanne = (basis + tag.start(), basis + tag.end())
+            for datum in _mit_jahr(int(tag[1]), monat, jahr, heute):
+                gefunden.append((datum, spanne))
+    return gefunden
+
+
+def _unter_monatskoepfen(text):
+    """Kalenderlisten der Form 'Oktober 27  3 Hinnerk Koehn  9 Yorick Thiede'
+    -> [(date, spanne), ...]
+
+    Ein Monatskopf faerbt den Text bis zum naechsten Monatskopf ein; jede
+    alleinstehende Zahl 1..31 darin gilt als Tag dieses Monats. Das ist bewusst
+    grosszuegig — es entstehen auch Belege aus Zahlen in Titeln ('25 JAHRE').
+
+    Das ist die richtige Richtung fuer diesen Fehler: ein Beleg zu viel laesst
+    einen erfundenen Termin durch, ein Beleg zu wenig wirft einen echten weg.
+    Der Prompt haelt die erste Haelfte in Schach, sonst nichts die zweite.
+    """
+    koepfe = list(MONATSKOPF.finditer(text))
+    gefunden = []
+    for stelle, kopf in enumerate(koepfe):
+        monat = MONATSNUMMER.get(kopf[1].lower()[:4],
+                                 MONATSNUMMER.get(kopf[1].lower()[:3]))
+        if not monat:
+            continue
+        jahr = int(kopf[2])
+        jahr = jahr if jahr > 100 else 2000 + jahr
+        bis = koepfe[stelle + 1].start() if stelle + 1 < len(koepfe) else len(text)
+        for zahl in NACKTER_TAG.finditer(text, kopf.end(), bis):
+            try:
+                gefunden.append((dt.date(jahr, monat, int(zahl[1])), zahl.span()))
+            except ValueError:
+                pass
+    return gefunden
+
+
+def umfeld(text, spanne):
+    """Text um eine Belegstelle, die Stelle in |Balken| -> str"""
+    anfang, ende = spanne
+    vorher = text[max(0, anfang - KONTEXT_ZEICHEN):anfang]
+    nachher = text[ende:ende + KONTEXT_ZEICHEN]
+    return f"...{vorher}|{text[anfang:ende]}|{nachher}..."
+
+
+# ------------------------------------------------------------------- Nachpruefen
+
+# St. Peter mischt vier Anfuehrungszeichen-Sorten ('Mit-Bach-durch-die-Regio'
+# stand im Text mit "", im Modellfund mit "") plus Halbgeviertstriche. Das
+# Modell normalisiert beim Zurueckgeben, der reine Kleinschreibungs-Vergleich
+# schlug fehl und verwarf einen echten Titel. Auf Standardzeichen abbilden,
+# bevor verglichen wird. None = loeschen: weiche Trennstriche und Nullbreiten-
+# Zeichen stehen in manchem CMS-Text mitten im Wort und lassen sonst jeden
+# Vergleich scheitern.
+_TYPOGRAFIE = str.maketrans({
+    "„": '"', "“": '"', "”": '"', "‚": "'", "’": "'",
+    "«": '"', "»": '"', "–": "-", "—": "-", "‒": "-",
+    "‑": "-",                       # geschuetzter Bindestrich
+    "…": "...",
+    "­": None, "​": None,      # weicher Trennstrich, Nullbreiten-Leerzeichen
+    "‌": None, "‍": None,      # Nullbreiten-Nichtverbinder / -Verbinder
+    "﻿": None,                      # BOM / Nullbreiten-No-Break
+})
+
+
+def _normal(s):
+    return re.sub(r"\s+", " ", (s or "").translate(_TYPOGRAFIE).lower()).strip()
+
+
+def _kuerze(satz, grenze):
+    """Auf <= grenze Zeichen, aber an einer Wortgrenze statt mitten im Wort.
+    Wurde gekuerzt, endet der Rest auf '…' als Signal."""
+    satz = (satz or "").strip()
+    if len(satz) <= grenze:
+        return satz
+    return satz[:grenze].rsplit(" ", 1)[0].rstrip(" ,;:–-") + "…"
+
+
+def _wortdeckung(satz, im_text):
+    """Anteil der Inhaltswoerter (>= 4 Buchstaben) aus 'satz', die in 'im_text'
+    vorkommen. -> 0.0..1.0; 1.0 wenn 'satz' keine Inhaltswoerter hat.
+
+    Ersetzt fuer die beschreibung den exakten Substring-Test: das Modell
+    formuliert die Beschreibung fast immer leicht um (Wortstellung, Grammatik),
+    ein woertlicher Vergleich verwarf darum reihenweise brauchbare Saetze.
+    Der Deckungsgrad faengt trotzdem eine frei erfundene Beschreibung ab.
+    """
+    woerter = re.findall(r"[^\W\d_]{4,}", _normal(satz))
+    if not woerter:
+        return 1.0
+    return sum(1 for w in woerter if w in im_text) / len(woerter)
+
+
+def nachpruefen(funde, text, heute, verbose=False, seiten=None):
+    """Titel UND Datum muessen im Text stehen, Genre aus der Liste.
+    -> (gute, verworfene, belege)
+
+    seiten: die tatsaechlich gelesenen Adressen (fuer die fundstelle-Pruefung).
+    Eine fundstelle, die nicht darunter ist, wird verworfen -> leer.
+
+    Bis zum 26.08.2026 wurde nur der Titel geprueft. Das reichte, solange nichts
+    schieflief, und versagte beim ersten Ernstfall: die Stiftung fuer Konkrete
+    Kunst meldete neun Vernissagen im Wochenabstand, alle mit demselben echten
+    Titel, sieben davon mit einem Datum, das nirgends auf der Seite steht.
+
+    Ein unbekanntes Genre wird weiterhin auf 'Sonstiges' gesetzt statt
+    verworfen — ein falsches Etikett macht einen echten Termin nicht ungueltig.
+    Ein erfundenes Datum schon.
+
+    Liegt eingaben/region.md vor, faellt zusaetzlich alles raus, dessen `ort`
+    keinen Ort/keine Spielstaette der Liste nennt ("Freiburg und Umgebung");
+    ohne die Datei bleibt dieser Schritt aus. Siehe _in_region / REGION.
+
+    titel/datum/kuenstler/ort werden woertlich gegen den Text gehalten — sie
+    sind das Faktenrueckgrat, da darf nichts kippen. beschreibung ist eine vom
+    Modell formulierte Zusammenfassung; woertlich pruefen geht da nicht. Gegen
+    frei Erfundenes greift die Wortdeckung (siehe _wortdeckung, Schwelle
+    BESCHREIBUNG_DECKUNG), darunter wird das Feld geleert (mit verbose=True auf
+    stderr vermerkt), der Termin bleibt.
+
+    Eine Wortdeckung sieht KEINE Rollenverdrehung ('Butoh-Taenzerin am E-Piano').
+    Dagegen haelt der Prompt Namen und Instrumente ganz aus der beschreibung
+    heraus (die stehen in kuenstler) -- ohne Instrumenten-Slot laesst sich auch
+    keine Besetzung falsch zuordnen.
+
+    belege bildet Datum -> alle Belegstellen ab, fuer --verbose.
+    """
+    im_text = _normal(text)
+    vorhanden = datumsfunde(text, heute)
+    # Fundstelle darf nur eine der tatsaechlich gelesenen Seiten sein. Vergleich
+    # ohne Schrägstrich am Ende und ohne Gross-/Kleinschreibung, sonst nichts.
+    erlaubte_seiten = {a.rstrip("/").lower() for a in (seiten or [])}
+    gut, verworfen, belege = [], [], {}
+    for fund in funde:
+        titel = fund.get("titel") or ""
+        try:
+            datum = dt.date.fromisoformat(fund.get("datum", ""))
+        except (ValueError, TypeError):
+            verworfen.append((fund, "Datum unlesbar"))
+            continue
+        if not titel:
+            verworfen.append((fund, "kein Titel"))
+            continue
+        if _normal(titel) not in im_text:
+            verworfen.append((fund, "Titel steht nicht im Text"))
+            continue
+        if datum not in vorhanden:
+            verworfen.append((fund, "Datum steht nicht im Text"))
+            continue
+
+        genre = next((g for g in GENRES
+                      if g.lower() == (fund.get("genre") or "").strip().lower()),
+                     "Sonstiges")
+
+        # kuenstler/ort/beschreibung werden gegen den Text geprueft, aber anders
+        # als beim Titel wirft ein Fehlschlag hier nicht den ganzen Termin weg —
+        # ein unbestaetigtes Nebenfeld macht einen bestaetigten Termin nicht
+        # ungueltig, genau wie ein unbekanntes Genre.
+        #
+        # kuenstler/ort sind kurze Eigennamen: woertlich pruefen, Faktenrueckgrat.
+        # beschreibung ist eine Zusammenfassung des Modells (WAS, nicht WER) —
+        # dort nur die Wortdeckung als Untergrenze gegen Erfundenes; Namen und
+        # Instrumente haelt der Prompt ganz raus, damit nichts verdreht wird.
+        #
+        # kuenstler kann mehrere sein ('Lucie Betz, Miku Arizono'). Steht der
+        # ganze String nicht so im Text, jeden Namen EINZELN pruefen und die
+        # bestaetigten wieder zusammensetzen -- sonst faellt bei jeder
+        # Doppelnennung das ganze Feld weg.
+        kuenstler = (fund.get("kuenstler") or "").strip()
+        if kuenstler and _normal(kuenstler) not in im_text:
+            teile = re.split(r"\s*,\s*|\s+&\s+|\s+und\s+", kuenstler, flags=re.I)
+            bestaetigt = [n.strip() for n in teile
+                          if n.strip() and _normal(n) in im_text]
+            kuenstler = ", ".join(dict.fromkeys(bestaetigt))
+        # Haengt dem Modellwert ein Trenner an ('Murat Coskun, Beatriz Picas, '),
+        # steht er oft trotzdem so im Text und der Zerleger oben greift nicht.
+        kuenstler = re.sub(r"^[\s,;&]+|[\s,;&]+$", "", kuenstler)
+        ort = fund.get("ort") or ""
+        if ort and _normal(ort) not in im_text:
+            ort = ""
+
+        # Regionsfilter "Freiburg und Umgebung". Greift nur, wenn eingaben/
+        # region.md vorliegt (sonst REGION == [], Block uebersprungen). Anders
+        # als die Nebenfelder oben wirft ein Fehlschlag hier den GANZEN Termin
+        # weg: ausserhalb der Region ist er kein Fund, sondern Rauschen.
+        # `ort` ist an dieser Stelle bereits gegen den Seitentext belegt; ein
+        # oben geleerter (unbelegter) `ort` zaehlt wie "keine Angabe".
+        if REGION:
+            if ort and not _in_region(ort):
+                verworfen.append((fund, f"Ort ausserhalb der Region: {ort!r}"))
+                continue
+            if not ort and not REGION_LEERER_ORT_OK:
+                verworfen.append((fund, "ohne belegte Ortsangabe (Regionsfilter)"))
+                continue
+
+        beschreibung = _kuerze(fund.get("beschreibung") or "", BESCHREIBUNG_MAX)
+        if beschreibung:
+            deckung = _wortdeckung(beschreibung, im_text)
+            if deckung < BESCHREIBUNG_DECKUNG:
+                if verbose:
+                    print(f"  beschreibung verworfen ({deckung:.0%}): "
+                          f"{beschreibung!r}", file=sys.stderr)
+                beschreibung = ""
+
+        # fundstelle: die konkrete Seite, auf der der Termin steht. Muss eine der
+        # gelesenen Adressen sein, sonst leer -- baue_webseite.py faellt dann auf
+        # die Domain-Startseite zurueck (domain_log.json seiten[0]).
+        fundstelle = (fund.get("fundstelle") or "").strip()
+        if fundstelle and fundstelle.rstrip("/").lower() not in erlaubte_seiten:
+            if verbose:
+                print(f"  fundstelle verworfen (nicht gelesen): {fundstelle!r}",
+                      file=sys.stderr)
+            fundstelle = ""
+
+        belege[fund["datum"]] = vorhanden[datum]
+        gut.append({"datum": fund["datum"], "uhrzeit": fund.get("uhrzeit") or "",
+                    "titel": titel, "kuenstler": kuenstler, "ort": ort,
+                    "beschreibung": beschreibung, "genre": genre,
+                    "fundstelle": fundstelle})
+    return sorted(gut, key=lambda t: (t["datum"], t["uhrzeit"])), verworfen, belege
+
+
+# ------------------------------------------------------------------- Darstellen
+
+def als_text(ergebnis, heute):
+    """Lesbare Fassung eines Ergebnisses. -> str
+
+    Gibt einen String zurueck statt zu drucken, damit dieselbe Fassung wahlweise
+    auf stdout oder in eine Datei gehen kann. Das ist der ganze Trick hinter der
+    Trennung von --json (wie) und --out (wohin).
+    """
+    zeilen = [f"# {ergebnis['ziel']}"]
+    quelle = ergebnis.get("quelle", "")
+    if quelle and quelle.rstrip("/") not in (
+            f"https://{ergebnis['ziel']}".rstrip("/"), ergebnis["ziel"].rstrip("/")):
+        zeilen.append(f"  gelesen: {quelle}")
+    if "fehler" in ergebnis:
+        zeilen.append(f"  {ergebnis['fehler']}")
+        return "\n".join(zeilen)
+
+    seiten = ergebnis.get("seiten", [])
+    if len(seiten) > 1:
+        zeilen.append(f"  {len(seiten)} Seiten, {ergebnis['zeichen']} Zeichen")
+        for seite in seiten[1:]:
+            zeilen.append(f"    + {seite['adresse']}")
+    else:
+        zeilen.append(f"  Text {ergebnis['zeichen']} Zeichen")
+    zeilen.append("")
+    zeilen.append(f"  {ergebnis['gemeldet']} gemeldet, "
+                  f"{len(ergebnis['termine'])} uebernommen, "
+                  f"{ergebnis['verworfen']} verworfen")
+    zeilen.append("")
+    for t in ergebnis["termine"]:
+        kuenftig = "  " if dt.date.fromisoformat(t["datum"]) >= heute else " (vorbei)"
+        zeile = (f"  {t['datum']}  {t['uhrzeit'] or '  :  '}  "
+                 f"{t['genre']:<24}  {t['titel'][:44]}{kuenftig}")
+        if t.get("kuenstler"):
+            zeile += f"  ~ {t['kuenstler'][:28]}"
+        if t.get("ort"):
+            zeile += f"  @ {t['ort'][:30]}"
+        zeilen.append(zeile)
+        if t.get("beschreibung"):
+            zeilen.append(f"      {t['beschreibung']}")
+        if t.get("fundstelle"):
+            zeilen.append(f"      -> {t['fundstelle']}")
+    for fund, grund in ergebnis.get("_verworfen", []):
+        zeilen.append(f"  VERWORFEN  {fund.get('datum', '?')}  "
+                      f"{str(fund.get('titel'))[:40]}  — {grund}")
+    k = ergebnis["tokens"]
+    zeilen.append("")
+    zeilen.append(f"  Tokens: {k['ein']} ein / {k['aus']} aus · "
+                  f"Kosten: {ergebnis['kosten_usd']:.4f} USD")
+    return "\n".join(zeilen)
+
+
+def belege_zeigen(gut, verworfen, belege, text):
+    """Der zweite --verbose-Block: wo im Text steht das gemeldete Datum?
+
+    Geht auf stderr wie der Abrufblock. Die Zeile mit dem Umfeld ist der
+    eigentliche Zweck des ganzen Schalters — an ihr sieht man, ob ein Datum
+    einen Termin bezeichnet oder das Ende einer Ausstellungsdauer:
+
+        <<13.09.2026>>  ...Wiegandt |13.09.2026| bis 08.11.2026 Helga Weihs...
+
+    Das 'bis' hinter dem Balken beantwortet die Frage, ohne die Seite zu oeffnen.
+    """
+    print("BELEGE", file=sys.stderr)
+    for termin in gut:
+        # Startseite und Unterseite tragen oft denselben Satz. Zwei Stellen mit
+        # gleichem Wortlaut sind zwei Fundorte, aber nur eine Auskunft.
+        gezeigt = []
+        for spanne in belege.get(termin["datum"], []):
+            zeile = umfeld(text, spanne)
+            if zeile not in gezeigt:
+                gezeigt.append(zeile)
+            if len(gezeigt) >= MAX_BELEGSTELLEN:
+                break
+        mehrfach = f"   ({len(gezeigt)} Fundstellen)" if len(gezeigt) > 1 else ""
+        print(f"  {termin['datum']}  {termin['genre']:<12}  "
+              f"{termin['titel'][:48]}{mehrfach}", file=sys.stderr)
+        for zeile in gezeigt:
+            print(f"     {zeile}", file=sys.stderr)
+    for fund, grund in verworfen:
+        print(f"  {fund.get('datum', '?')}  VERWORFEN     "
+              f"{str(fund.get('titel'))[:48]}", file=sys.stderr)
+        print(f"     {grund}", file=sys.stderr)
+    if not gut and not verworfen:
+        print("  (nichts gemeldet)", file=sys.stderr)
+
+
+def ausgeben(ergebnis, heute, als_json, ziel_datei):
+    """Format waehlen, Ziel waehlen, ausgeben.
+
+    Die beiden Entscheidungen sind unabhaengig — vier Faelle aus zwei Schaltern:
+
+                       stdout                 Datei
+        lesbar         (nichts)               --out x.txt
+        JSON           --json                 --json --out x.json
+
+    Der Hinweis auf die geschriebene Datei geht auf stderr, damit
+    'termine_aus_domain foo.de --json --out x.json' und eine Pipe sich nicht ins Gehege
+    kommen.
+    """
+    if als_json:
+        ergebnis.pop("_verworfen", None)     # Tupel, nicht JSON-faehig
+        text = json.dumps(ergebnis, ensure_ascii=False, indent=2)
+    else:
+        text = als_text(ergebnis, heute)
+    if ziel_datei:
+        ordner = os.path.dirname(os.path.abspath(ziel_datei))
+        os.makedirs(ordner, exist_ok=True)
+        with open(ziel_datei, "w", encoding="utf-8") as datei:
+            datei.write(text + "\n")
+        print(f"-> {ziel_datei}", file=sys.stderr)
+    else:
+        print(text)
+
+
+# --------------------------------------------------------------------- Ablauf
+
+def main():
+    zerleger = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    zerleger.add_argument("ziel", help="Domain (foo.de) oder vollstaendige Adresse")
+    zerleger.add_argument("--json", action="store_true", dest="als_json",
+                          help="JSON statt lesbarer Fassung")
+    zerleger.add_argument("--out", default="",
+                          help="in diese Datei schreiben statt auf stdout")
+    zerleger.add_argument("--modell", default="haiku",
+                          help="Modell fuer claude -p (Vorgabe: haiku)")
+    zerleger.add_argument("--show-prompt", action="store_true", dest="show_prompt",
+                          help="den an claude fuer die Recherche uebergebenen Prompt ausgeben")
+    zerleger.add_argument("--verbose", action="store_true",
+                          help="auf stderr zeigen, welche Unterseiten gelesen "
+                               "wurden und in welchem Umfeld jedes Datum steht")
+    zerleger.add_argument("--kein-browser", action="store_true", dest="kein_browser",
+                          help="Social-Hosts (Instagram) nicht ueber den Chrome "
+                               "lesen, sondern wie jede andere Seite ueber requests "
+                               "(bekommt dort nur die Bio)")
+    zerleger.add_argument("--browser-port", type=int, default=BROWSER_PORT,
+                          dest="browser_port",
+                          help=f"Chrome-Debug-Port fuer Social-Hosts "
+                               f"(Vorgabe: {BROWSER_PORT})")
+    argumente = zerleger.parse_args()
+
+    heute = dt.date.today()
+    ergebnis = {"ziel": argumente.ziel, "quelle": "",
+                "abgerufen": f"{heute:%Y-%m-%d}", "termine": []}
+
+    def abbrechen(meldung):
+        """Fehlerfall: geht denselben Weg wie ein Erfolg, damit --out und --json
+        auch dann greifen."""
+        ergebnis["fehler"] = meldung
+        ausgeben(ergebnis, heute, argumente.als_json, argumente.out)
+        return 1
+
+    # Das Protokoll faellt beim Abruf an, also bevor feststeht, ob er gelingt.
+    # Es wird auch im Fehlerfall gezeigt — gerade dann ist es das Interessante.
+    protokoll = [] if argumente.verbose else None
+    try:
+        text, quelle, gelesen = sammle_seiten(
+            argumente.ziel, heute, protokoll,
+            kein_browser=argumente.kein_browser,
+            browser_port=argumente.browser_port)
+    except Exception as fehler:
+        if protokoll:
+            print("ABRUF\n" + "\n".join(protokoll), file=sys.stderr)
+        hinweis = str(fehler) if fehler.args else type(fehler).__name__
+        return abbrechen(f"nicht erreichbar: {hinweis}")
+
+    if argumente.verbose:
+        print("ABRUF", file=sys.stderr)
+        print("\n".join(protokoll), file=sys.stderr)
+        print(f"  -> {len(gelesen)} Seiten, {len(text)} Zeichen an das Modell\n",
+              file=sys.stderr)
+
+    ergebnis["quelle"] = quelle
+    gekappt = text[:MAX_ZEICHEN]
+    if argumente.show_prompt:
+        print(f"--- an claude uebergebener Prompt ({len(gekappt)} Zeichen) ---\n{gekappt}\n"
+              "--- Ende ---", file=sys.stderr)
+
+    funde, k = claude_fragen(gekappt, heute, argumente.modell)
+    if funde is None:
+        return abbrechen("claude lieferte keine Antwort")
+
+    gut, verworfen, belege = nachpruefen(funde, gekappt, heute, argumente.verbose,
+                                         seiten=[a for a, _ in gelesen])
+    if argumente.verbose:
+        belege_zeigen(gut, verworfen, belege, gekappt)
+        print("", file=sys.stderr)
+
+    ergebnis["termine"] = gut
+    ergebnis["gemeldet"] = len(funde)
+    ergebnis["verworfen"] = len(verworfen)
+    ergebnis["_verworfen"] = verworfen
+    ergebnis["seiten"] = [{"adresse": a, "zeichen": z} for a, z in gelesen]
+    ergebnis["zeichen"] = len(gekappt)
+    ergebnis["kosten_usd"] = k.get("kosten", 0.0)
+    ergebnis["tokens"] = {"ein": k.get("ein", 0), "aus": k.get("aus", 0)}
+
+    ausgeben(ergebnis, heute, argumente.als_json, argumente.out)
+    return 0 if gut else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

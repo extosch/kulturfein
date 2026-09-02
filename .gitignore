@@ -1,0 +1,6 @@
+# Python-Bytecode
+__pycache__/
+*.pyc
+
+# Zwischenspeicher (kommt mit dem Kalibrier-Werkzeug)
+ausgaben/pruef-cache/

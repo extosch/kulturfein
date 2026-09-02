@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>kulturfein — Kulturtermine Freiburg</title>
+<!-- Favicon inline als SVG-Data-URI: kein favicon.ico neben index.html, das
+     beim Ausliefern vergessen werden koennte. 'KF', Seiten-Tinte auf Seiten-Papier. -->
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='5' fill='%23eef2e9'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Bahnschrift,Arial,sans-serif' font-weight='700' font-size='16' letter-spacing='.5' fill='%231c2818'%3EKF%3C/text%3E%3C/svg%3E">
+<style>
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #141910;
+      --paper-raised: #1b2117;
+      --paper-line: #303a29;
+      --ink: #e8eee1;
+      --ink-soft: #a7b49f;
+      --ink-faint: #6f7c68;
+      --accent: #e37a4c;
+      --accent-ink: #1a0f09;
+      --genre-tanz: #d98fb3;
+      --genre-buehne: #b79ae0;
+      --genre-vortrag: #92a3dd;
+      --genre-spirituell: #8fa8d9;
+      --genre-ausstellung: #6fb6ac;
+      --genre-konzert: #72ac86;
+      --genre-lesung: #dcab5c;
+      --genre-workshop: #9fb08f;
+      --genre-sonstiges: #a7b49f;
+      --shadow: rgba(0, 0, 0, 0.45);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #141910;
+    --paper-raised: #1b2117;
+    --paper-line: #303a29;
+    --ink: #e8eee1;
+    --ink-soft: #a7b49f;
+    --ink-faint: #6f7c68;
+    --accent: #e37a4c;
+    --accent-ink: #1a0f09;
+    --genre-tanz: #d98fb3;
+    --genre-buehne: #b79ae0;
+    --genre-vortrag: #92a3dd;
+    --genre-spirituell: #8fa8d9;
+    --genre-ausstellung: #6fb6ac;
+    --genre-konzert: #72ac86;
+    --genre-lesung: #dcab5c;
+    --genre-workshop: #9fb08f;
+    --genre-sonstiges: #a7b49f;
+    --shadow: rgba(0, 0, 0, 0.45);
+  }
+
+  :root {
+    --paper: #eef2e9;
+    --paper-raised: #e2e8da;
+    --paper-line: #c4cebb;
+    --ink: #1c2818;
+    --ink-soft: #4c5a46;
+    --ink-faint: #7c8874;
+    --accent: #bd471c;
+    --accent-ink: #fdf6ee;
+    --genre-tanz: #a13d6b;
+    --genre-buehne: #6b4c9c;
+    --genre-vortrag: #4c5f9c;
+    --genre-spirituell: #3d5a80;
+    --genre-ausstellung: #2f766d;
+    --genre-konzert: #2f6248;
+    --genre-lesung: #96731f;
+    --genre-workshop: #5a6b52;
+    --genre-sonstiges: #7c8874;
+    --shadow: rgba(28, 40, 24, 0.12);
+
+    --font-display: "Bahnschrift", "DIN Alternate", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+    --font-body: Charter, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { background: var(--paper); }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem 4rem;
+  }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead {
+    border-bottom: 3px solid var(--ink);
+    padding-bottom: 1.6rem;
+    margin-bottom: 2.2rem;
+  }
+
+  .masthead .kicker {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.9rem;
+  }
+
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: clamp(2.3rem, 7vw, 3.4rem);
+    letter-spacing: 0.01em;
+    text-transform: none;   /* Schriftzug 'kulturfein' bleibt klein */
+    margin: 0 0 0.5rem;
+    text-wrap: balance;
+  }
+
+  /* das 'ur' in 'kulturfein' nur farblich abgesetzt, sonst nichts */
+  .masthead h1 .ur { color: var(--accent); }
+
+  .masthead .dek {
+    font-size: 1.02rem;
+    color: var(--ink-soft);
+    max-width: 58ch;
+    margin: 0;
+  }
+
+  .masthead .dek strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Legend ---------- */
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.1rem;
+    margin: 1.5rem 0 2.6rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--paper-raised);
+    border: 1px solid var(--paper-line);
+    border-radius: 3px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    border: none;
+    background: none;
+    padding: 0.2rem 0.4rem;
+    border-radius: 2px;
+    cursor: pointer;
+  }
+
+  .legend-item:hover { color: var(--ink); }
+
+  .legend-item.active {
+    background: var(--paper-line);
+    color: var(--ink);
+  }
+
+  .dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    flex: none;
+  }
+
+  /* ---------- Day sections ---------- */
+
+  .day {
+    margin-bottom: 2.4rem;
+  }
+
+  .day-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    border-bottom: 1px solid var(--ink);
+    padding-bottom: 0.4rem;
+    margin-bottom: 1rem;
+  }
+
+  .day-head .weekday {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+
+  .day-head .date {
+    font-family: var(--font-mono);
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .day-head .today-badge {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    background: var(--accent);
+    color: var(--accent-ink);
+    padding: 0.2rem 0.55rem;
+    border-radius: 2px;
+  }
+
+  .day[data-today="true"] .day-head,
+  .day.today-live .day-head { border-bottom-color: var(--accent); }
+
+  .entries {
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+  }
+
+  .entry {
+    display: grid;
+    grid-template-columns: 5.2rem 1fr;
+    gap: 0.2rem 1rem;
+    position: relative;
+  }
+
+  .entry .time {
+    font-family: var(--font-mono);
+    font-size: 0.86rem;
+    color: var(--ink-soft);
+    font-variant-numeric: tabular-nums;
+    padding-top: 0.15rem;
+  }
+
+  .entry .title {
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin: 0 0 0.15rem;
+    text-wrap: balance;
+  }
+
+  .entry .sub {
+    font-weight: 400;
+    color: var(--ink-soft);
+    margin: 0 0 0.35rem;
+  }
+
+  .entry .desc {
+    margin: 0 0 0.5rem;
+    color: var(--ink);
+    max-width: 62ch;
+  }
+
+  .entry .meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-soft);
+  }
+
+  .tag .dot { width: 0.5rem; height: 0.5rem; }
+
+  .meta a {
+    text-decoration: none;
+    color: var(--ink-faint);
+    border-bottom: 1px dotted var(--ink-faint);
+  }
+  .meta a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ---------- Empty state ---------- */
+
+  .empty-state {
+    padding: 2.2rem 1.5rem;
+    background: var(--paper-raised);
+    border: 1px dashed var(--paper-line);
+    border-radius: 3px;
+    color: var(--ink-soft);
+    text-align: center;
+    margin-bottom: 2.4rem;
+  }
+
+  /* Nur per JS eingeblendet, wenn der aktive Filter nichts (mehr) zeigt --
+     anders als .empty-state (Bauzeit: gar keine Termine im Bestand), das
+     standardmaessig sichtbar sein muss, wenn Jinja es rendert. */
+  #leer-gefiltert { display: none; }
+
+  /* ---------- Footer ---------- */
+
+  .foot {
+    margin-top: 3rem;
+    padding-top: 1.6rem;
+    border-top: 3px solid var(--ink);
+  }
+
+  .foot h2 {
+    font-family: var(--font-display);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 1rem;
+    margin: 0 0 0.7rem;
+  }
+
+  .foot p {
+    color: var(--ink-soft);
+    font-size: 0.92rem;
+    max-width: 64ch;
+  }
+
+  .foot p + h2 { margin-top: 1.6rem; }
+
+  .source-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 0.4rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .source-grid li::before {
+    content: "· ";
+    color: var(--ink-faint);
+  }
+
+  @media (max-width: 480px) {
+    .entry { grid-template-columns: 4rem 1fr; }
+    .masthead .kicker { flex-direction: column; gap: 0.2rem; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <div class="kicker">
+      <span>Freiburg i. Br. — Kulturtermine</span>
+      <span>generiert {{ generated_at }}</span>
+    </div>
+    <h1>kult<span class="ur">ur</span>fein</h1>
+    <p class="dek">
+      {% if is_empty %}
+      Noch keine Termine erfasst — <strong>der erste Sammel-Lauf steht noch aus</strong>.
+      Diese Seite füllt sich, sobald <code>tools/domain_lauf.py</code> zum ersten Mal durchgelaufen ist.
+      {% else %}
+      {{ entry_count }} kommende Termine, automatisiert erkannt direkt bei den Veranstalter-Websites
+      der abgefragten Domains — <strong>keine Ticketportale, keine Aggregatoren</strong> als Fundort.
+      {% endif %}
+    </p>
+  </header>
+
+  <div class="legend">
+    <button type="button" class="legend-item active" data-genre="alle">Alle</button>
+    {% for genre in genres %}
+    <button type="button" class="legend-item" data-genre="{{ genre.slug }}">
+      <span class="dot" style="background:var({{ genre.farbe }})"></span>{{ genre.name }}
+    </button>
+    {% endfor %}
+  </div>
+
+  {% if is_empty %}
+  <div class="empty-state">Noch keine Termine im Bestand.</div>
+  {% endif %}
+
+  <p id="leer-gefiltert" class="empty-state">Keine Termine für diesen Filter.</p>
+
+  {% for day in days %}
+  <section class="day" data-date="{{ day.date }}"{% if day.is_today %} data-today="true"{% endif %}>
+    <div class="day-head">
+      <span class="weekday">{{ day.weekday }}</span>
+      <span class="date">{{ day.date_anzeige }}</span>
+      {% if day.is_today %}<span class="today-badge">Heute</span>{% endif %}
+    </div>
+    <div class="entries">
+      {% for entry in day.entries %}
+      <article class="entry" data-genre="{{ entry.genre_slug }}">
+        <div class="time">{{ entry.uhrzeit or "" }}</div>
+        <div>
+          <p class="title">{{ entry.titel }}</p>
+          {% if entry.kuenstler or entry.ort %}
+          <p class="sub">{{ [entry.kuenstler, entry.ort] | select | join(" — ") }}</p>
+          {% endif %}
+          {% if entry.beschreibung %}
+          <p class="desc">{{ entry.beschreibung }}</p>
+          {% endif %}
+          <div class="meta">
+            <span class="tag"><span class="dot" style="background:var({{ entry.genre_farbe }})"></span>{{ entry.genre }}</span>
+            {% if entry.link %}
+            <a href="{{ entry.link }}" target="_blank" rel="noopener"
+               title="{{ entry.link }}">{{ entry.link_label }} ↗</a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+      {% if day.is_today and not day.entries %}
+      <p style="color:var(--ink-faint); font-size:0.9rem;">Für heute noch keine Termine erfasst.</p>
+      {% endif %}
+    </div>
+  </section>
+  {% endfor %}
+
+  <footer class="foot">
+    <h2>Methodik &amp; Grenzen</h2>
+    <p>
+      Automatisiert generiert am {{ generated_at }} aus <code>termine.json</code>
+      (Pipeline: <code>domain_lauf.py</code> scannt <code>domains.md</code>, ruft je fälliger
+      Domain <code>termine_aus_domain.py</code> auf, verschmilzt die Funde dublettenfrei —
+      siehe README). Vergangene Termine werden bei jedem Sammel-Lauf entfernt, nicht archiviert.
+      Ein unbekanntes oder nicht im Text belegtes Feld bleibt leer, macht den Termin aber nicht
+      ungültig.
+    </p>
+    <h2>Abgefragte Domains ({{ domains | length }})</h2>
+    {% if domains %}
+    <ul class="source-grid">
+      {% for domain in domains %}
+      <li>{{ domain }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Noch keine Domains eingetragen — siehe <code>domains.md</code>.</p>
+    {% endif %}
+  </footer>
+
+</div>
+<script>
+  // Ohne JavaScript bleibt die vom Server gerenderte Ansicht stehen (Bauzeit-
+  // 'Heute', alle Tage sichtbar) -- das hier ist reine Verbesserung obendrauf,
+  // kein Ersatz. Kein Framework, keine Abhaengigkeit.
+
+  function heuteIso() {
+    var d = new Date();
+    var mm = String(d.getMonth() + 1).padStart(2, "0");
+    var dd = String(d.getDate()).padStart(2, "0");
+    return d.getFullYear() + "-" + mm + "-" + dd;
+  }
+
+  function aktualisiere() {
+    var heute = heuteIso();
+    var aktiv = document.querySelector(".legend-item.active");
+    var aktivesGenre = aktiv ? aktiv.dataset.genre : "alle";
+    // Getrennt von 'zeigen': Heute zaehlt als sichtbarer TAG auch leer, aber
+    // nicht als sichtbarer TERMIN -- sonst zeigt der Leer-Hinweis nie mehr an,
+    // dass ein Genre-Filter ueberall sonst nichts trifft.
+    var sichtbareEintraegeGesamt = 0;
+
+    document.querySelectorAll(".day").forEach(function (tag) {
+      var istVergangen = tag.dataset.date < heute;
+      var sichtbareEintraege = 0;
+
+      tag.querySelectorAll(".entry").forEach(function (eintrag) {
+        var passt = aktivesGenre === "alle" || eintrag.dataset.genre === aktivesGenre;
+        eintrag.style.display = passt ? "" : "none";
+        if (passt) sichtbareEintraege++;
+      });
+
+      var istHeute = tag.dataset.date === heute;
+      tag.classList.toggle("today-live", istHeute);
+
+      // 'Heute' bleibt immer sichtbar, auch ohne (gefilterte) Eintraege --
+      // Ankerpunkt fuer die Orientierung, genau wie beim Bauzeit-Rendern
+      // (baue_tage() in baue_webseite.py haelt aus demselben Grund immer einen
+      // Eintrag fuer heute vor).
+      var zeigen = istHeute || (!istVergangen && sichtbareEintraege > 0);
+      tag.style.display = zeigen ? "" : "none";
+      if (!istVergangen) sichtbareEintraegeGesamt += sichtbareEintraege;
+    });
+
+    var hinweis = document.getElementById("leer-gefiltert");
+    if (hinweis) hinweis.style.display = sichtbareEintraegeGesamt ? "none" : "block";
+  }
+
+  document.querySelectorAll(".legend-item").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".legend-item").forEach(function (b) {
+        b.classList.remove("active");
+      });
+      btn.classList.add("active");
+      aktualisiere();
+    });
+  });
+
+  aktualisiere();
+</script>
+</body>
+</html>
