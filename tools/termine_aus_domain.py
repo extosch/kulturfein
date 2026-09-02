@@ -39,7 +39,8 @@ Daraus ergeben sich vier Faelle, ohne Sonderregel und ohne Negativ-Schalter.
 
     termine_aus_domain klavierdepot-freiburg.de           # ueber .local/bin/termine_aus_domain
     python termine_aus_domain.py foo.de        # oder direkt
-    termine_aus_domain foo.de --show-prompt               # an claude uebergebenen Prompt auf stderr
+    termine_aus_domain foo.de --show-prompt               # Dialog mit claude auf stderr:
+                                                          # hin (Auftrag+Schema+Text), zurueck (rohe Antwort)
     termine_aus_domain foo.de --verbose                   # Abruf und Datumsbelege auf stderr
     termine_aus_domain foo.de --modell sonnet
 
@@ -1039,9 +1040,12 @@ def als_text(ergebnis, heute):
             zeilen.append(f"      {t['beschreibung']}")
         if t.get("fundstelle"):
             zeilen.append(f"      -> {t['fundstelle']}")
+    # Titel NICHT kuerzen: die Verwerfungszeile ist eine Diagnosezeile. Genau der
+    # abgeschnittene Teil war zuletzt der, den man zum Vergleich mit dem
+    # Seitentext gebraucht haette.
     for fund, grund in ergebnis.get("_verworfen", []):
         zeilen.append(f"  VERWORFEN  {fund.get('datum', '?')}  "
-                      f"{str(fund.get('titel'))[:40]}  — {grund}")
+                      f"{fund.get('titel')!r}  — {grund}")
     k = ergebnis["tokens"]
     zeilen.append("")
     zeilen.append(f"  Tokens: {k['ein']} ein / {k['aus']} aus · "
@@ -1078,7 +1082,7 @@ def belege_zeigen(gut, verworfen, belege, text):
             print(f"     {zeile}", file=sys.stderr)
     for fund, grund in verworfen:
         print(f"  {fund.get('datum', '?')}  VERWORFEN     "
-              f"{str(fund.get('titel'))[:48]}", file=sys.stderr)
+              f"{fund.get('titel')!r}", file=sys.stderr)
         print(f"     {grund}", file=sys.stderr)
     if not gut and not verworfen:
         print("  (nichts gemeldet)", file=sys.stderr)
@@ -1125,7 +1129,9 @@ def main():
     zerleger.add_argument("--modell", default="haiku",
                           help="Modell fuer claude -p (Vorgabe: haiku)")
     zerleger.add_argument("--show-prompt", action="store_true", dest="show_prompt",
-                          help="den an claude fuer die Recherche uebergebenen Prompt ausgeben")
+                          help="Dialog mit claude auf stderr zeigen: HINWEG "
+                               "(system-prompt, auftrag, json-schema, Seitentext) "
+                               "und RUECKWEG (rohe Modellantwort vor nachpruefen)")
     zerleger.add_argument("--verbose", action="store_true",
                           help="auf stderr zeigen, welche Unterseiten gelesen "
                                "wurden und in welchem Umfeld jedes Datum steht")
@@ -1173,12 +1179,33 @@ def main():
     ergebnis["quelle"] = quelle
     gekappt = text[:MAX_ZEICHEN]
     if argumente.show_prompt:
-        print(f"--- an claude uebergebener Prompt ({len(gekappt)} Zeichen) ---\n{gekappt}\n"
-              "--- Ende ---", file=sys.stderr)
+        # Alles, was an claude geht -- die Anweisung UND der Text. Vorher zeigte
+        # dieser Schalter nur den Seitentext; genau die Anweisung, um die es beim
+        # Debuggen der Wortlaut-Treue geht, blieb unsichtbar.
+        print("=== HINWEG 1/4: system-prompt ===", file=sys.stderr)
+        print(SYSTEMPROMPT, file=sys.stderr)
+        print("\n=== HINWEG 2/4: auftrag ===", file=sys.stderr)
+        print(auftrag(heute), file=sys.stderr)
+        print("\n=== HINWEG 3/4: json-schema ===", file=sys.stderr)
+        print(json.dumps(json.loads(SCHEMA), ensure_ascii=False, indent=2),
+              file=sys.stderr)
+        print(f"\n=== HINWEG 4/4: seitentext ueber stdin ({len(gekappt)} Zeichen) ===",
+              file=sys.stderr)
+        print(gekappt, file=sys.stderr)
+        print("=== Ende HINWEG ===\n", file=sys.stderr)
 
     funde, k = claude_fragen(gekappt, heute, argumente.modell)
     if funde is None:
         return abbrechen("claude lieferte keine Antwort")
+
+    if argumente.show_prompt:
+        # Die ROHE Modellantwort, vor nachpruefen und ungekuerzt. Nur hier sieht
+        # man, was das Modell woertlich als titel/ort/datum geliefert hat -- die
+        # Voraussetzung, um Prompt-Fehler von Pruef-Fehlern zu unterscheiden.
+        print(f"=== RUECKWEG: rohe Modellantwort ({len(funde)} Termine, "
+              f"vor nachpruefen) ===", file=sys.stderr)
+        print(json.dumps(funde, ensure_ascii=False, indent=2), file=sys.stderr)
+        print("=== Ende RUECKWEG ===\n", file=sys.stderr)
 
     gut, verworfen, belege = nachpruefen(funde, gekappt, heute, argumente.verbose,
                                          seiten=[a for a, _ in gelesen])
