@@ -13,6 +13,8 @@ weiter 'EIGENSTAENDIG ... laesst sich woandershin kopieren' bleiben.
     python domain_lauf.py --frische 28     # nur was aelter als vier Wochen ist
     python domain_lauf.py --nur foo.de     # eine Domain, ohne domains.md zu aendern
     python domain_lauf.py --liste x.md     # andere Domain-Liste statt domains.md
+    python domain_lauf.py --spur test      # eigenes Gleis: test-domains.md ->
+                                           # test-termine.json, test-domain_log.json
     python domain_lauf.py --trocken        # zeigen, was faellig waere, nichts tun
 
 DREI DATEIEN, drei getrennte Aufgaben:
@@ -22,6 +24,10 @@ DREI DATEIEN, drei getrennte Aufgaben:
                       Wird je Scan ueberschrieben, keine Historie.
     termine.json      Die Funde aller Domains zusammen. Waechst und
                       aktualisiert sich, ist aber KEIN Archiv.
+
+--spur legt allen dreien ein Praefix vor (test-domains.md, test-termine.json,
+test-domain_log.json). So laesst sich ein Referenzbestand aufbauen, ohne den
+produktiven anzufassen. Das domain_log MUSS mitwandern, siehe _pfade().
 
 VERGANGENES FLIEGT RAUS, auch aus dem Bestand. Warum sollte man es
 mitschleppen — die Datei soll zeigen, was noch bevorsteht. Entscheidend ist
@@ -61,9 +67,25 @@ if hasattr(sys.stdout, "reconfigure"):
 HIER = os.path.dirname(os.path.abspath(__file__))
 PROJEKT = os.path.dirname(HIER)
 
-DOMAINS = os.path.join(PROJEKT, "eingaben", "domains.md")
-DOMAIN_LOG = os.path.join(PROJEKT, "ausgaben", "domain_log.json")
-TERMINE = os.path.join(PROJEKT, "ausgaben", "termine.json")
+def _pfade(spur=""):
+    """Namenspraefix -> (domains, domain_log, termine). Leer = Produktion.
+
+    Ein Testlauf soll den Produktivbestand nicht anfassen: '--spur test' liest
+    eingaben/test-domains.md und schreibt ausgaben/test-termine.json sowie
+    ausgaben/test-domain_log.json.
+
+    Das domain_log MUSS mitwandern. Teilten sich Test- und Produktivlauf eins,
+    wuerde ein Testlauf die Domain als 'frisch besucht' eintragen und der
+    naechste Produktivlauf sie ueberspringen -- der echte Bestand veraltete,
+    ohne dass es auffaellt.
+    """
+    p = f"{spur}-" if spur else ""
+    return (os.path.join(PROJEKT, "eingaben", f"{p}domains.md"),
+            os.path.join(PROJEKT, "ausgaben", f"{p}domain_log.json"),
+            os.path.join(PROJEKT, "ausgaben", f"{p}termine.json"))
+
+
+DOMAINS, DOMAIN_LOG, TERMINE = _pfade()
 
 FRISCHE_TAGE = 7        # juenger als das -> beim Sammellauf ueberspringen
 AEHNLICHKEIT = 0.6      # Startwert, nicht gemessen; siehe _aehnlich()
@@ -255,9 +277,16 @@ def main():
                                f"(Vorgabe: {FRISCHE_TAGE}; 0 = alles neu scannen)")
     zerleger.add_argument("--nur", default="",
                           help="nur diese eine Domain, statt domains.md")
-    zerleger.add_argument("--liste", default=DOMAINS,
+    zerleger.add_argument("--liste", default=None,
                           help="andere Domain-Liste statt eingaben/domains.md "
-                               "(z. B. eingaben/test-domains.md); gleiches Format")
+                               "(z. B. eingaben/test-domains.md); gleiches Format. "
+                               "Gewinnt gegen --spur")
+    zerleger.add_argument("--spur", default="",
+                          help="Namenspraefix fuer ALLE Ein- und Ausgabedateien: "
+                               "'--spur test' liest eingaben/test-domains.md und "
+                               "schreibt ausgaben/test-termine.json und "
+                               "ausgaben/test-domain_log.json. Ohne Angabe: "
+                               "die Produktivdateien")
     zerleger.add_argument("--modell", default="haiku",
                           help="Modell fuer claude -p (Vorgabe: haiku)")
     zerleger.add_argument("--trocken", action="store_true",
@@ -266,13 +295,17 @@ def main():
     argumente = zerleger.parse_args()
 
     heute = dt.date.today()
-    domains = [argumente.nur] if argumente.nur else lade_domains(argumente.liste)
+    domains_datei, domain_log_datei, termine_datei = _pfade(argumente.spur)
+    if argumente.liste:                  # explizit gesetzt -> gewinnt gegen --spur
+        domains_datei = argumente.liste
+
+    domains = [argumente.nur] if argumente.nur else lade_domains(domains_datei)
     if not domains:
-        print(f"Keine Domains. {argumente.liste} fehlt oder ist leer.", file=sys.stderr)
+        print(f"Keine Domains. {domains_datei} fehlt oder ist leer.", file=sys.stderr)
         return 1
 
-    log = _lade_json(DOMAIN_LOG, {})
-    bestand = _lade_json(TERMINE, [])
+    log = _lade_json(domain_log_datei, {})
+    bestand = _lade_json(termine_datei, [])
 
     faellig = [d for d in domains
                if not ist_frisch(log.get(d), heute, argumente.frische)]
@@ -300,8 +333,8 @@ def main():
         # Abbruch (Ctrl-C, Absturz, Timeout) bleibt so der Fortschritt aller
         # bereits fertigen Domains erhalten. Bei Fehlschlag unveraendert,
         # der Schreibvorgang ist dann nur redundant, nicht falsch.
-        _schreibe_json(DOMAIN_LOG, log)
-        _schreibe_json(TERMINE, bestand)
+        _schreibe_json(domain_log_datei, log)
+        _schreibe_json(termine_datei, bestand)
 
     # Auch ohne einen einzigen Scan aufraeumen: Vergangenes soll verschwinden,
     # sobald jemand den Lauf startet, nicht erst wenn zufaellig eine Domain
@@ -310,12 +343,12 @@ def main():
     bestand = [t for t in bestand if t.get("datum", "") >= heute.isoformat()]
     entfernt = vorher - len(bestand)
 
-    _schreibe_json(DOMAIN_LOG, log)
-    _schreibe_json(TERMINE, bestand)
+    _schreibe_json(domain_log_datei, log)
+    _schreibe_json(termine_datei, bestand)
 
     print(f"\n{gescannt} gescannt, {len(bestand)} Termine im Bestand"
           + (f", {entfernt} vergangene entfernt" if entfernt else ""))
-    print(f"-> {TERMINE}\n-> {DOMAIN_LOG}")
+    print(f"-> {termine_datei}\n-> {domain_log_datei}")
     return 0
 
 

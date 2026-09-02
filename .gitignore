@@ -4,3 +4,9 @@ __pycache__/
 
 # Zwischenspeicher (kommt mit dem Kalibrier-Werkzeug)
 ausgaben/pruef-cache/
+
+# Testgleis (--spur test): Wegwerf-Ausgaben, entstehen bei jedem Experiment neu.
+# Wird aus test-termine.json spaeter ein KURATIERTER Referenzbestand, bekommt der
+# einen eigenen Namen und gehoert dann sehr wohl ins Repo.
+ausgaben/test-*.json
+/test-index.html

@@ -30,8 +30,10 @@ DER LINK JE TERMIN kommt nicht aus termine.json (das traegt nur die nackte
 Domain, keine URL) -- er wird aus domain_log.json nachgeschlagen:
 seiten[0] ist die Startadresse dieser Domain nach Weiterleitung.
 
-    python tools/baue_webseite.py         # index.html im Projekt-Root schreiben
+    python tools/baue_webseite.py              # index.html im Projekt-Root schreiben
+    python tools/baue_webseite.py --spur test  # test-termine.json -> test-index.html
 """
+import argparse
 import datetime as dt
 import difflib
 import json
@@ -50,11 +52,26 @@ if hasattr(sys.stdout, "reconfigure"):
 HIER = os.path.dirname(os.path.abspath(__file__))
 PROJEKT = os.path.dirname(HIER)
 
-TERMINE = os.path.join(PROJEKT, "ausgaben", "termine.json")
-DOMAIN_LOG = os.path.join(PROJEKT, "ausgaben", "domain_log.json")
-DOMAINS = os.path.join(PROJEKT, "eingaben", "domains.md")
 TEMPLATE_ORDNER = os.path.join(HIER, "templates")
-AUSGABE = os.path.join(PROJEKT, "index.html")
+
+
+def _pfade(spur=""):
+    """Namenspraefix -> (termine, domain_log, domains, ausgabe). Leer = Produktion.
+
+    Gegenstueck zu _pfade() in domain_lauf.py: '--spur test' rendert
+    ausgaben/test-termine.json nach test-index.html, ohne index.html anzufassen.
+    Bewusst dupliziert statt geteilt -- der gemeinsame Import waere
+    termine_aus_domain.py, und das soll laut Dateikopf EIGENSTAENDIG bleiben und
+    kennt weder termine.json noch index.html.
+    """
+    p = f"{spur}-" if spur else ""
+    return (os.path.join(PROJEKT, "ausgaben", f"{p}termine.json"),
+            os.path.join(PROJEKT, "ausgaben", f"{p}domain_log.json"),
+            os.path.join(PROJEKT, "eingaben", f"{p}domains.md"),
+            os.path.join(PROJEKT, f"{p}index.html"))
+
+
+TERMINE, DOMAIN_LOG, DOMAINS, AUSGABE = _pfade()
 
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]   # date.weekday(): 0=Montag
                                                           # fest verdrahtet statt
@@ -295,11 +312,21 @@ def baue_tage(termine, log, heute):
 
 
 def main():
+    zerleger = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    zerleger.add_argument("--spur", default="",
+                          help="Namenspraefix fuer Ein- und Ausgabedateien: "
+                               "'--spur test' rendert ausgaben/test-termine.json "
+                               "nach test-index.html. Ohne Angabe: die "
+                               "Produktivdateien")
+    argumente = zerleger.parse_args()
+    termine_datei, domain_log_datei, domains_datei, ausgabe = _pfade(argumente.spur)
+
     heute = dt.date.today()
-    roh = _nur_gueltige(_lade_json(TERMINE, []))
+    roh = _nur_gueltige(_lade_json(termine_datei, []))
     termine = _gruppiere(roh)
-    log = _lade_json(DOMAIN_LOG, {})
-    domains = _lade_domains(DOMAINS)
+    log = _lade_json(domain_log_datei, {})
+    domains = _lade_domains(domains_datei)
 
     genres = [{"name": ANZEIGE_NAME.get(g, g),
                "farbe": GENRE_FARBEN.get(g, GENRE_FARBEN["Sonstiges"])[1],
@@ -316,13 +343,13 @@ def main():
         generated_at=heute.strftime("%d.%m.%Y"),
     )
 
-    with open(AUSGABE, "w", encoding="utf-8") as datei:
+    with open(ausgabe, "w", encoding="utf-8") as datei:
         datei.write(html)
     entfernt = len(roh) - len(termine)
     print(f"{len(termine)} Termine"
           + (f" ({len(roh)} vor Gruppierung, {entfernt} Quellen-Dublette(n))"
              if entfernt else "")
-          + f", {len(tage)} Tage -> {AUSGABE}")
+          + f", {len(tage)} Tage -> {ausgabe}")
     return 0
 
 
