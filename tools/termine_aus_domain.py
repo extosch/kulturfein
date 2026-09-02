@@ -844,6 +844,19 @@ def _normal(s):
     return re.sub(r"\s+", " ", (s or "").translate(_TYPOGRAFIE).lower()).strip()
 
 
+# Anfuehrungszeichen um einen Werktitel: die Seite setzt sie, das Modell laesst
+# sie oft weg -- '"Brachland" - ein Oratorium' gegen 'Brachland - ein Oratorium'.
+# _TYPOGRAFIE vereinheitlicht die Varianten nur (》 " « alle zu "), es ENTFERNT
+# sie nicht; ein einziges fehlendes " liess den Teilstring-Test scheitern und
+# warf einen echten Termin weg. Getilgt wird deshalb in der zweiten Stufe der
+# Titelpruefung (siehe nachpruefen), die exakte erste Stufe bleibt unveraendert.
+_QUOTES = re.compile(r"[\"'«»‘’‚“”„‹›]")
+
+
+def _ohne_quotes(s):
+    return _QUOTES.sub("", s)
+
+
 def _kuerze(satz, grenze):
     """Auf <= grenze Zeichen, aber an einer Wortgrenze statt mitten im Wort.
     Wurde gekuerzt, endet der Rest auf '…' als Signal."""
@@ -884,6 +897,14 @@ def nachpruefen(funde, text, heute, verbose=False, seiten=None):
     verworfen — ein falsches Etikett macht einen echten Termin nicht ungueltig.
     Ein erfundenes Datum schon.
 
+    Der TITEL wird zweistufig geprueft: erst woertlich, dann ohne
+    Anfuehrungszeichen auf beiden Seiten (_ohne_quotes). Die Seite schreibt
+    '"Brachland" - ein Oratorium', das Modell liefert mal mit, mal ohne die
+    Zeichen — am 02.09. lieferte derselbe Text deswegen mal 8, mal 5
+    uebernommene Termine. Die zweite Stufe weicht nichts auf: die Wortfolge
+    muss weiterhin exakt im Text stehen. Das DATUM bleibt einstufig und hart;
+    es ist der eigentliche Halluzinations-Anker.
+
     Liegt eingaben/region.md vor, faellt zusaetzlich alles raus, dessen `ort`
     keinen Ort/keine Spielstaette der Liste nennt ("Freiburg und Umgebung");
     ohne die Datei bleibt dieser Schritt aus. Siehe _in_region / REGION.
@@ -903,6 +924,8 @@ def nachpruefen(funde, text, heute, verbose=False, seiten=None):
     belege bildet Datum -> alle Belegstellen ab, fuer --verbose.
     """
     im_text = _normal(text)
+    # Einmal vorab, nicht je Fund: im_text ist bis zu MAX_ZEICHEN lang.
+    im_text_blank = _ohne_quotes(im_text)
     vorhanden = datumsfunde(text, heute)
     # Fundstelle darf nur eine der tatsaechlich gelesenen Seiten sein. Vergleich
     # ohne Schrägstrich am Ende und ohne Gross-/Kleinschreibung, sonst nichts.
@@ -918,7 +941,15 @@ def nachpruefen(funde, text, heute, verbose=False, seiten=None):
         if not titel:
             verworfen.append((fund, "kein Titel"))
             continue
-        if _normal(titel) not in im_text:
+        # Zwei Stufen: erst woertlich, dann ohne Anfuehrungszeichen auf BEIDEN
+        # Seiten. Die zweite ist keine Aufweichung -- '"Brachland"' und
+        # 'Brachland' sind derselbe Titel, die Wortfolge muss weiterhin exakt
+        # stimmen, ein erfundener Titel wird so nicht gefunden. Sie nimmt
+        # ausserdem die groesste Quelle der Lauf-zu-Lauf-Schwankung raus: ob das
+        # Modell die Anfuehrungszeichen mitschreibt, ist Zufall (derselbe Text
+        # lieferte am 02.09. mal 8, mal 5 uebernommene Termine, nur deswegen).
+        if (_normal(titel) not in im_text
+                and _ohne_quotes(_normal(titel)) not in im_text_blank):
             verworfen.append((fund, "Titel steht nicht im Text"))
             continue
         if datum not in vorhanden:
