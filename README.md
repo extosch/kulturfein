@@ -283,6 +283,8 @@ zweiten Modellaufruf:
 | **starke** Wörter (Veranstaltung, Termin, Konzert, Programm, Kalender, Tour) reichen allein, **schwache** (Ausstellung, Vorschau, Lesung) brauchen den Pfad dazu | Themenwörter in beiläufigen Untertiteln |
 | Jahreszahl kleiner als das laufende Jahr | die Jahresnavigation `veranstaltungen_1999_2000.html` … `_2025.html` |
 | Negativliste (Newsletter, Impressum, Kontakt, Archiv, Tourist/Tourismus …) | `Newsletter abonnieren` beim Vorderhaus — der Linktext nennt „Programm" und „Konzerte" und schlug damit den echten Kalender |
+| Stichwort muss ein **Pfad-Wort anführen**, nicht darin stecken | `/event/…-eroeffnungskonzert` schlug `/events` um einen Punkt und schnitt die Übersicht ab |
+| bei Punktgleichstand gewinnt der **flachere** Pfad | die Einzelseite vor der Übersicht, die sie verlinkt |
 
 `Tour` kam am 01.09.2026 dazu: `murat-coskun.eu` zeigt auf der Startseite nur die
 nächsten vier Termine, die volle Liste (25+) steht unter `/on-tour` — ohne Stichwort nie

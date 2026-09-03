@@ -152,6 +152,15 @@ NIE_TERMINE = ("newsletter", "impressum", "datenschutz", "kontakt", "anfahrt",
 # Filter kaemen zwanzig Archivseiten mit.
 JAHR_IM_TEXT = re.compile(r"(19|20)\d{2}")
 
+# Zerlegt einen URL-Pfad in Woerter. Ein Stichwort zaehlt nur, wenn es ein
+# solches Wort ANFUEHRT -- '/events' und '/on-tour' ja, die Titel-Slugs
+# '/event/ensemble-akademie-eroeffnungskonzert' nein. Ohne das gewinnt jede
+# Einzelterminseite gegen ihre eigene Uebersicht: sie traegt das Stichwort im
+# Linktext UND zweimal im Pfad. Bei ensemble-recherche.de frassen so zwei
+# Seiten mit je einem Termin 10.476 Zeichen, waehrend /events abgeschnitten
+# ankam und /Veranstaltungen ganz ausfiel.
+PFAD_TRENNER = re.compile(r"[/\-_.]+")
+
 # Ehrlicher Abrufkopf mit Kontaktadresse — dieselbe Haltung wie im uebrigen Projekt.
 KOPFZEILEN = {"User-Agent": "kulturfein/1.0 (+mailto:info@exergia.de)"}
 
@@ -442,6 +451,9 @@ def waehle_unterseiten(suppe, startadresse, heute):
     Filter kaemen zwanzig Archivseiten mit. Eine Jahreszahl kleiner als das
     laufende Jahr disqualifiziert den Link.
 
+    Bei Punktgleichstand gewinnt der flachere Pfad: die Uebersicht steht ueber
+    der Einzelseite, die von ihr verlinkt wird.
+
     Rueckgabe enthaelt die Stichworte und die Archiv-Ablehnungen, damit
     --verbose die Auswahl begruenden kann statt sie nur zu behaupten. Links ohne
     jedes Stichwort werden nicht einzeln gemeldet — das waeren bei jeder Seite
@@ -476,10 +488,10 @@ def waehle_unterseiten(suppe, startadresse, heute):
             abgelehnt.append((adresse, f"Archiv, Jahr {archivjahr} "
                                        f"< {heute.year}"))
             continue
-        bewertet.append((adresse, punkte, treffer))
+        bewertet.append((adresse, punkte, treffer, len([teil for teil in pfad.split("/") if teil])))
 
-    bewertet.sort(key=lambda eintrag: eintrag[1], reverse=True)
-    return [(adresse, treffer) for adresse, _, treffer in bewertet], abgelehnt
+    bewertet.sort(key=lambda eintrag: (eintrag[1], -eintrag[3]), reverse=True)
+    return [(adresse, treffer) for adresse, _, treffer, _ in bewertet], abgelehnt
 
 
 def _bewerte(beschriftung, pfad):
@@ -498,14 +510,25 @@ def _bewerte(beschriftung, pfad):
 
     Tiefe Pfade kosten Punkte. /ausstellungen/2026_weihs/weihs_wo_15_2016.html
     ist eine Bildseite, keine Uebersicht.
+
+    Im Pfad zaehlt ein Stichwort nur am WORTANFANG (siehe PFAD_TRENNER), sonst
+    schlaegt jede Einzelterminseite ihre eigene Uebersicht: /events bekam 4
+    Punkte, /event/ensemble-akademie-eroeffnungskonzert 5 -- Stichwort im
+    Linktext plus zweimal im Pfad, davon einmal mitten im Titel-Slug. Die
+    Tiefenstrafe faengt das nicht, Detailseiten liegen bei Tiefe 2. Am
+    03.09.2026 wurde stattdessen die Strafe ab Tiefe 1 probiert und wieder
+    verworfen: sie warf bei stiftung-konkrete-kunst /ausstellungen/* und bei
+    mehrklang /events/kategorie/* unter MINDESTPUNKTE.
     """
+    woerter = PFAD_TRENNER.split(pfad)
     treffer = sorted({wort for wort in STICHWORTE
-                      if wort in beschriftung or wort in pfad})
+                      if wort in beschriftung
+                      or any(teil.startswith(wort) for teil in woerter)})
     punkte = 0
     for wort in treffer:
         if wort in beschriftung:
             punkte += 3 if wort in STARKE_STICHWORTE else 2
-        if wort in pfad:
+        if any(teil.startswith(wort) for teil in woerter):
             punkte += 1
     tiefe = len([teil for teil in pfad.split("/") if teil])
     return punkte - max(0, tiefe - 2), treffer
