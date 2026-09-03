@@ -16,6 +16,8 @@
 
 ## Stadt Freiburg
 Freiburg
+Zaehringen
+Zähringen
 
 ## Dreisamtal und Hochschwarzwald
 Kirchzarten
@@ -102,6 +104,7 @@ Schopf 2
 Waldsee
 Kloster St. Lioba
 Haus St. Benedikt
+Roland Phleps
 Ensemblehaus
 PAN.OPTIKUM
 Panoptikum
