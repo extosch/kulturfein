@@ -100,6 +100,7 @@ ZEITLIMIT = 180        # Sekunden je claude-Aufruf
 ABRUF_TIMEOUT = 20     # Sekunden je Seitenabruf
 MAX_ZEICHEN = 30000    # Obergrenze, damit ein Ausreisser nicht 100.000 Token schickt
 MAX_UNTERSEITEN = 4    # zusaetzlich zur Startseite, also hoechstens 5 Abrufe je Domain
+MAX_BLAETTER = 5       # Folgeseiten einer geblaetterten Liste, je gelesener Seite
 MINDESTPUNKTE = 3      # ein Stichwort im Linktext; ein Ordnername allein reicht nicht
 KONTEXT_ZEICHEN = 55   # Umfeld je Belegstelle in der --verbose-Ausgabe
 MAX_BELEGSTELLEN = 3   # mehr Fundstellen je Datum sagen nichts Neues
@@ -459,7 +460,7 @@ def waehle_unterseiten(suppe, startadresse, heute):
     jedes Stichwort werden nicht einzeln gemeldet — das waeren bei jeder Seite
     zwei Dutzend Zeilen Impressum und Datenschutz.
     """
-    heimat = urlparse(startadresse).netloc.lower()
+    heimat = _heimat(startadresse)
     bewertet, abgelehnt, gesehen = [], [], {_ohne_anker(startadresse)}
 
     for verweis in suppe.find_all("a", href=True):
@@ -470,7 +471,7 @@ def waehle_unterseiten(suppe, startadresse, heute):
         if adresse in gesehen:
             continue
         zerlegt = urlparse(adresse)
-        if zerlegt.scheme not in ("http", "https") or zerlegt.netloc.lower() != heimat:
+        if zerlegt.scheme not in ("http", "https") or _heimat(adresse) != heimat:
             continue
         if zerlegt.path.lower().endswith(KEINE_SEITE):
             continue
@@ -534,6 +535,22 @@ def _bewerte(beschriftung, pfad):
     return punkte - max(0, tiefe - 2), treffer
 
 
+def _heimat(adresse):
+    """Adresse -> Host ohne fuehrendes 'www.'
+
+    kloster-st-lioba.de liefert seine Startseite ohne www aus, verlinkt aber
+    jede Unterseite mit. Verglich waehle_unterseiten die Hosts zeichengleich,
+    galten alle 136 Links als fremde Domain: die Terminuebersicht mit den
+    Uhrzeiten fiel heraus, und uebrig blieb die Startseite, auf der die
+    Ankuendigungen ohne Uhrzeit stehen.
+
+    Nur 'www.' faellt weg, keine anderen Subdomains -- shop.beispiel.de bleibt
+    fremd, sonst laeuft der Scan in Ticketshops und Blogs.
+    """
+    host = urlparse(adresse).netloc.lower()
+    return host[4:] if host.startswith("www.") else host
+
+
 def _ohne_anker(adresse):
     """Adresse ohne #fragment — sonst gilt seite.html#oben als eigene Seite."""
     return adresse.split("#", 1)[0].rstrip("/") or adresse
@@ -564,14 +581,49 @@ def _ist_archiv(pfad, beschriftung, heute):
     return None
 
 
+def _blaetter_seiten(suppe, adresse, grenze):
+    """Gelesene Seite -> Adressen ihrer Folgeseiten, Seitenzahl aufsteigend.
+
+    Ein Blaetter-Link zeigt auf DIESELBE Seite -- gleicher Pfad, andere
+    Abfrage -- und traegt als Beschriftung nur eine Ziffer.
+    kloster-st-lioba.de zeigt 10 von 53 Terminen und haengt den Rest an
+    '?pagerPage_f1092ea5=2' bis '=6'; ohne die endet der Scan Ende September,
+    und die Klosterfuehrungen am 24.10. und 28.11. fehlen. Der Parametername
+    ist seitenspezifisch, die Form nicht -- gesucht wird nur nach der Form.
+
+    Seite 1 faellt weg, die steht schon da. Eine Folgeseite wird nicht
+    ihrerseits weiterverfolgt: ihre Blaetterleiste zeigt dieselben Ziele,
+    und der Texthash in sammle_seiten faengt nur gleiche, nicht kreisende
+    Seiten ab.
+    """
+    hier = urlparse(adresse)
+    gefunden = {}
+    for verweis in suppe.find_all("a", href=True):
+        beschriftung = verweis.get_text(" ", strip=True)
+        if not beschriftung.isdigit() or int(beschriftung) < 2:
+            continue
+        ziel = _ohne_anker(urljoin(adresse, verweis["href"]))
+        zerlegt = urlparse(ziel)
+        if not zerlegt.query or _heimat(ziel) != _heimat(adresse):
+            continue
+        if zerlegt.path.rstrip("/") != hier.path.rstrip("/"):
+            continue
+        gefunden.setdefault(int(beschriftung), ziel)
+    return [gefunden[nummer] for nummer in sorted(gefunden)[:grenze]]
+
+
 def sammle_seiten(ziel, heute, protokoll=None, *, kein_browser=False,
                   browser_port=BROWSER_PORT):
     """Domain -> (gesamttext, startadresse, [(adresse, zeichen)]).
 
-    Startseite plus bis zu MAX_UNTERSEITEN Termin-Seiten, zu EINEM Text
-    zusammengehaengt. Ein Modellaufruf statt fuenf: bei ~2.000 Zeichen je Seite
-    bleibt das weit unter MAX_ZEICHEN, und fuenf Aufrufe kosteten das Fuenffache
-    an Systemprompt und Auftrag.
+    Startseite, ihre Termin-Seiten und deren Folgeseiten, zu EINEM Text
+    zusammengehaengt: bis zu MAX_UNTERSEITEN Kandidaten (siehe
+    waehle_unterseiten) und je gelesener Seite bis zu MAX_BLAETTER Blaetter-
+    Ziele (siehe _blaetter_seiten). Alles zusammen bleibt unter MAX_ZEICHEN;
+    wer zuerst drankommt, bekommt den Platz.
+
+    Und das alles in EINEM Modellaufruf, nicht einem je Seite: Auftrag und
+    Systemprompt waeren sonst so oft zu bezahlen, wie Seiten gelesen wurden.
 
     Ein Textabschnitt beginnt mit '--- <adresse> ---'. Der Auftrag erklaert dem
     Modell diese Zeile; sie kostet ein Dutzend Token und macht im Zweifel
@@ -612,28 +664,54 @@ def sammle_seiten(ziel, heute, protokoll=None, *, kein_browser=False,
         melde(f"  {adresse}  - {grund}")
     for adresse, treffer in kandidaten[MAX_UNTERSEITEN:]:
         melde(f"  {adresse}  - nachrangig ({', '.join(treffer)})")
-    for adresse, treffer in kandidaten[:MAX_UNTERSEITEN]:
+    def nimm(adresse, notiz):
+        """Eine Seite holen und an den Gesamttext haengen.
+
+        Rueckgabe (suppe, endadresse) oder None, wenn nicht gelesen wurde --
+        Budget erschoepft, nicht erreichbar, oder derselbe Text wie eine schon
+        gelesene Seite. Steht als eigene Funktion da, weil Kandidaten und ihre
+        Folgeseiten denselben Weg gehen; sie unterscheiden sich nur in der
+        Herkunft, nicht in der Behandlung.
+        """
+        nonlocal uebrig
         if uebrig <= 0:
             melde(f"  {adresse}  uebersprungen (Zeichenbudget erschoepft)")
-            continue
+            return None
         try:
-            unterseite, _, endadresse = _hole_eine(adresse)
+            seitentext, seitensuppe, endadresse = _hole_eine(adresse)
         except Exception as fehler:
             melde(f"  {adresse}  nicht erreichbar: {type(fehler).__name__}")
-            continue
+            return None
 
-        fingerabdruck = hashlib.sha1(unterseite.encode("utf-8")).hexdigest()
+        fingerabdruck = hashlib.sha1(seitentext.encode("utf-8")).hexdigest()
         if fingerabdruck in bekannt:
             melde(f"  {adresse}  gleicher Text wie zuvor, uebersprungen")
-            continue
+            return None
         bekannt.add(fingerabdruck)
 
         kopf = f"--- {endadresse} ---\n"
-        stueck = unterseite[:max(0, uebrig - len(kopf))]
+        stueck = seitentext[:max(0, uebrig - len(kopf))]
         abschnitte.append(kopf + stueck)
         gelesen.append((endadresse, len(stueck)))
         uebrig -= len(kopf) + len(stueck)
-        melde(f"  {endadresse}  {len(stueck)} Z  + {', '.join(treffer)}")
+        melde(f"  {endadresse}  {len(stueck)} Z  {notiz}")
+        return seitensuppe, endadresse
+
+    for adresse, treffer in kandidaten[:MAX_UNTERSEITEN]:
+        gelesene_seite = nimm(adresse, f"+ {', '.join(treffer)}")
+        if gelesene_seite is None:
+            continue
+        unterseite_suppe, endadresse = gelesene_seite
+        for blatt in _blaetter_seiten(unterseite_suppe, endadresse, MAX_BLAETTER):
+            nimm(blatt, "+ Folgeseite")
+
+    # Zuletzt, nicht zuerst: die Blaetterleiste der Startseite fuehrt zu
+    # aelteren Nachrichten, die Kandidatenseiten dagegen sind die vom
+    # Punkteschema erkannten Terminlisten. Bei kloster-st-lioba.de nahm die
+    # Startseiten-Folgeseite 3.564 Zeichen und kostete damit Seite 6 der
+    # Terminliste -- 10 Termine gegen einen Nachrichtenauszug.
+    for blatt in _blaetter_seiten(suppe, startadresse, MAX_BLAETTER):
+        nimm(blatt, "+ Folgeseite der Startseite")
 
     return "\n\n".join(abschnitte), startadresse, gelesen
 

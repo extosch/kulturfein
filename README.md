@@ -285,6 +285,18 @@ zweiten Modellaufruf:
 | Negativliste (Newsletter, Impressum, Kontakt, Archiv, Tourist/Tourismus …) | `Newsletter abonnieren` beim Vorderhaus — der Linktext nennt „Programm" und „Konzerte" und schlug damit den echten Kalender |
 | Stichwort muss ein **Pfad-Wort anführen**, nicht darin stecken | `/event/…-eroeffnungskonzert` schlug `/events` um einen Punkt und schnitt die Übersicht ab |
 | bei Punktgleichstand gewinnt der **flachere** Pfad | die Einzelseite vor der Übersicht, die sie verlinkt |
+| Host-Vergleich **ohne `www.`** | `kloster-st-lioba.de` liefert ohne www aus und verlinkt mit — alle 136 Links galten als fremde Domain |
+
+Zwei Regeln kamen am 03.09.2026 über `kloster-st-lioba.de` dazu. Die Seite liefert ihre
+Startseite **ohne** `www.` aus, verlinkt aber jede Unterseite **mit** — beim zeichengleichen
+Hostvergleich galten damit alle 136 Links als fremde Domain, und der Terminkalender wurde nie
+gelesen. Übrig blieben die Ankündigungen der Startseite, die keine Uhrzeit nennen.
+Derselbe Kalender zeigt **10 von 53** Terminen und hängt den Rest an `?pagerPage_…=2` bis `=6`.
+Solchen **Blätter-Links** folgt das Skript seither: gleicher Pfad, andere Abfrage, eine Ziffer
+als Linktext — der Parametername ist seitenspezifisch, diese Form nicht. Höchstens
+`MAX_BLAETTER` Folgeseiten je gelesener Seite, und die der Startseite zuletzt, weil sie zu
+älteren Nachrichten führen statt zu Terminen. Ergebnis bei St. Lioba: **9 Termine vorher,
+34–48 nachher**, die Klosterführung erstmals mit ihrer Uhrzeit.
 
 `Tour` kam am 01.09.2026 dazu: `murat-coskun.eu` zeigt auf der Startseite nur die
 nächsten vier Termine, die volle Liste (25+) steht unter `/on-tour` — ohne Stichwort nie
