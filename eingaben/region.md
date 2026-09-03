@@ -100,6 +100,8 @@ Markgräflerland
 Schopf2
 Schopf 2
 Waldsee
+Kloster St. Lioba
+Haus St. Benedikt
 Ensemblehaus
 PAN.OPTIKUM
 Panoptikum

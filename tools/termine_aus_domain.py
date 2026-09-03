@@ -199,7 +199,19 @@ GENRES = _lade_genres()
 REGION_DATEI = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "eingaben", "region.md")
-REGION_LEERER_ORT_OK = False   # True -> Termin ohne jede Ortsangabe trotzdem behalten
+# Termin ohne belegte Ortsangabe: behalten oder verwerfen?
+#
+# Stand 02.09.2026 auf True. Vorher False ("streng"), das war falsch. Der
+# Regionsfilter wurde gebaut, um Murats Konzerte in Pilsen und Strassburg
+# draussen zu halten -- die trugen EXPLIZITE Ortsangaben und werden weiterhin
+# gefangen. Diese Konstante entscheidet nur, was bei FEHLENDEM Signal geschieht,
+# und "kein Signal" hiess bisher "Termin vernichten".
+#
+# Bei kloster-st-lioba.de kostete das drei Klosterfuehrungen: dieselbe Seite,
+# dieselbe Struktur (Ortsname, darunter Stadt), und das Modell fuellte den ort
+# mal vollstaendig, mal halb, mal gar nicht. Rund 36 der 39 Domains sind feste
+# Freiburger Haeuser -- dort ist ein fehlender Ort kein Verdachtsmoment.
+REGION_LEERER_ORT_OK = True
 
 
 def _lade_region():
