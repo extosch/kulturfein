@@ -199,19 +199,24 @@ GENRES = _lade_genres()
 REGION_DATEI = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
     "eingaben", "region.md")
-# Termin ohne belegte Ortsangabe: behalten oder verwerfen?
+# Termin ohne belegte Ortsangabe: behalten oder verwerfen? Das haengt vom
+# DOMAIN-TYP ab, eine globale Antwort ist fuer beide Seiten falsch.
 #
-# Stand 02.09.2026 auf True. Vorher False ("streng"), das war falsch. Der
-# Regionsfilter wurde gebaut, um Murats Konzerte in Pilsen und Strassburg
-# draussen zu halten -- die trugen EXPLIZITE Ortsangaben und werden weiterhin
-# gefangen. Diese Konstante entscheidet nur, was bei FEHLENDEM Signal geschieht,
-# und "kein Signal" hiess bisher "Termin vernichten".
+#   Spielstaette (rund 36 der 39 Domains) kuendigt ihr eigenes Programm an.
+#   Der ort ist dort ein Raumname ("Kraeutergarten", "Haus St. Benedikt"), die
+#   Geografie steckt in der Domain. Einen ort zu VERLANGEN kostete bei
+#   kloster-st-lioba.de drei echte Klosterfuehrungen.
 #
-# Bei kloster-st-lioba.de kostete das drei Klosterfuehrungen: dieselbe Seite,
-# dieselbe Struktur (Ortsname, darunter Stadt), und das Modell fuellte den ort
-# mal vollstaendig, mal halb, mal gar nicht. Rund 36 der 39 Domains sind feste
-# Freiburger Haeuser -- dort ist ein fehlender Ort kein Verdachtsmoment.
-REGION_LEERER_ORT_OK = True
+#   Tour-Domain (eingaben/tour-domains.md) spielt ueberall. Der ort TRAEGT die
+#   geografische Information. Ihn nicht zu verlangen liess bei
+#   ensemble-recherche.de Konzerte in Berlin und Wien in den Freiburger
+#   Kalender rutschen.
+#
+# Deshalb kein globaler Schalter mehr, sondern der Parameter ort_pflicht an
+# nachpruefen(); die Aufrufer leiten ihn ueber ist_tour() aus der Domain ab.
+TOUR_DATEI = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "eingaben", "tour-domains.md")
 
 
 def _lade_region():
@@ -227,6 +232,34 @@ def _lade_region():
 
 
 REGION = _lade_region()
+
+
+def _lade_tour():
+    """eingaben/tour-domains.md -> [domain, ...]; leer, wenn die Datei fehlt.
+
+    Leere Liste heisst: jede Domain gilt als Spielstaette, ein fehlender ort
+    verwirft nie. Das ist die vertraegliche Vorgabe fuer eine einzeln kopierte
+    termine_aus_domain.py (siehe "EIGENSTAENDIG" im Dateikopf).
+    """
+    if not os.path.exists(TOUR_DATEI):
+        return []
+    with open(TOUR_DATEI, encoding="utf-8") as datei:
+        return [d for zeile in datei if (d := zeile.split("#", 1)[0].strip())]
+
+
+TOUR_DOMAINS = _lade_tour()
+
+
+def ist_tour(ziel):
+    """Domain ohne festes Haus? -> bool
+
+    'ziel' darf die nackte Domain oder eine vollstaendige Adresse sein; geprueft
+    wird als Teilstring auf der klein geschriebenen Form, damit
+    'https://www.ensemble-recherche.de/events' genauso trifft wie
+    'ensemble-recherche.de'.
+    """
+    z = (ziel or "").lower()
+    return any(d.lower() in z for d in TOUR_DOMAINS)
 
 
 def _in_region(ort):
@@ -919,7 +952,7 @@ def _wortdeckung(satz, im_text):
     return sum(1 for w in woerter if w in im_text) / len(woerter)
 
 
-def nachpruefen(funde, text, heute, verbose=False, seiten=None):
+def nachpruefen(funde, text, heute, verbose=False, seiten=None, ort_pflicht=False):
     """Titel UND Datum muessen im Text stehen, Genre aus der Liste.
     -> (gute, verworfene, belege)
 
@@ -946,6 +979,10 @@ def nachpruefen(funde, text, heute, verbose=False, seiten=None):
     Liegt eingaben/region.md vor, faellt zusaetzlich alles raus, dessen `ort`
     keinen Ort/keine Spielstaette der Liste nennt ("Freiburg und Umgebung");
     ohne die Datei bleibt dieser Schritt aus. Siehe _in_region / REGION.
+
+    ort_pflicht: bei Tour-Domains (eingaben/tour-domains.md) verwirft auch ein
+    FEHLENDER ort, denn dort traegt er die Geografie. Bei Spielstaetten nicht --
+    siehe TOUR_DATEI fuer die Begruendung beider Richtungen.
 
     titel/datum/kuenstler/ort werden woertlich gegen den Text gehalten — sie
     sind das Faktenrueckgrat, da darf nichts kippen. beschreibung ist eine vom
@@ -1031,12 +1068,17 @@ def nachpruefen(funde, text, heute, verbose=False, seiten=None):
         # weg: ausserhalb der Region ist er kein Fund, sondern Rauschen.
         # `ort` ist an dieser Stelle bereits gegen den Seitentext belegt; ein
         # oben geleerter (unbelegter) `ort` zaehlt wie "keine Angabe".
+        #
+        # Ein FEHLENDER ort verwirft nur bei Tour-Domains (ort_pflicht). Dort
+        # traegt der ort die Geografie, ohne ihn landen Berlin und Wien im
+        # Freiburger Kalender. Bei Spielstaetten steckt die Geografie in der
+        # Domain, dort waere Verwerfen der teurere Fehler (siehe TOUR_DATEI).
         if REGION:
             if ort and not _in_region(ort):
                 verworfen.append((fund, f"Ort ausserhalb der Region: {ort!r}"))
                 continue
-            if not ort and not REGION_LEERER_ORT_OK:
-                verworfen.append((fund, "ohne belegte Ortsangabe (Regionsfilter)"))
+            if not ort and ort_pflicht:
+                verworfen.append((fund, "ohne Ortsangabe, aber Tour-Domain"))
                 continue
 
         beschreibung = _kuerze(fund.get("beschreibung") or "", BESCHREIBUNG_MAX)
@@ -1277,7 +1319,8 @@ def main():
         print("=== Ende RUECKWEG ===\n", file=sys.stderr)
 
     gut, verworfen, belege = nachpruefen(funde, gekappt, heute, argumente.verbose,
-                                         seiten=[a for a, _ in gelesen])
+                                         seiten=[a for a, _ in gelesen],
+                                         ort_pflicht=ist_tour(argumente.ziel))
     if argumente.verbose:
         belege_zeigen(gut, verworfen, belege, gekappt)
         print("", file=sys.stderr)

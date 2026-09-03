@@ -73,7 +73,7 @@ lokhalle-freiburg.de
 ## Kulturraum
 instagram.com/konrad_wallmeier
 stiftung-konkrete-kunst.de
-schopf2.de
+#schopf2.de
 kreativpioniere-freiburg.de
 artraum-freiburg.de
 delphi-space.com

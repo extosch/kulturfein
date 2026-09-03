@@ -257,7 +257,8 @@ def scanne(domain, heute, modell):
         return None, [adresse for adresse, _ in gelesen]
 
     gut, verworfen, _ = tad.nachpruefen(funde, gekappt, heute,
-                                        seiten=[a for a, _ in gelesen])
+                                        seiten=[a for a, _ in gelesen],
+                                        ort_pflicht=tad.ist_tour(domain))
     # Vergangene getrennt ausweisen, sonst steht am Ende '4 uebernommen' neben
     # '1 im Bestand' und niemand weiss, wo die anderen drei geblieben sind.
     vorbei = len([t for t in gut if t.get("datum", "") < heute.isoformat()])
