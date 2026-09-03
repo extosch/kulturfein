@@ -1,13 +1,20 @@
+# WICHTIG: .gitignore wirkt NUR auf Dateien, die Git noch nicht kennt. Fuer
+# bereits versionierte Dateien ist ein Muster hier wirkungslos UND irrefuehrend
+# -- es sieht aus wie ein Ausschluss, ist aber keiner. Wer eine versionierte
+# Datei loswerden will, braucht "git rm --cached <datei>" (nimmt sie ab jetzt
+# raus, laesst sie lokal liegen); aus der HISTORIE verschwindet sie damit noch
+# nicht. Deshalb steht hier nichts, was unter "git ls-files" auftaucht.
+
 # Python-Bytecode
 __pycache__/
 *.pyc
 
-# Eingabe Domains/Genres/Regionen
-eingaben/*
+# Testgleis (--spur test): Wegwerf-Ausgaben, entstehen bei jedem Lauf neu.
+# Die produktiven Gegenstuecke ausgaben/termine.json und ausgaben/domain_log.json
+# sind versioniert und bleiben es -- ein pauschales "ausgaben/*" waere genau der
+# oben beschriebene Fehler.
+ausgaben/test*.json
+/test*-index.html
 
-# Ausgabe für Zwischenresultate
-ausgaben/*
-
-/test-index.html
+# Persoenliche Notizen, gehoeren niemandem sonst
 /merkzettel.txt
-/README.md
