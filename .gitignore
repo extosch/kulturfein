@@ -2,11 +2,12 @@
 __pycache__/
 *.pyc
 
-# Zwischenspeicher (kommt mit dem Kalibrier-Werkzeug)
-ausgaben/pruef-cache/
+# Eingabe Domains/Genres/Regionen
+eingaben/*
 
-# Testgleis (--spur test): Wegwerf-Ausgaben, entstehen bei jedem Experiment neu.
-# Wird aus test-termine.json spaeter ein KURATIERTER Referenzbestand, bekommt der
-# einen eigenen Namen und gehoert dann sehr wohl ins Repo.
-ausgaben/test-*.json
+# Ausgabe für Zwischenresultate
+ausgaben/*
+
 /test-index.html
+/merkzettel.txt
+/README.md
