@@ -68,7 +68,7 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 PROJEKT = os.path.dirname(HIER)
 
 def _pfade(spur=""):
-    """Namenspraefix -> (domains, domain_log, termine). Leer = Produktion.
+    """Namenspraefix -> (domains, domain_log, termine, reihen). Leer = Produktion.
 
     Ein Testlauf soll den Produktivbestand nicht anfassen: '--spur test' liest
     eingaben/test-domains.md und schreibt ausgaben/test-termine.json sowie
@@ -78,14 +78,18 @@ def _pfade(spur=""):
     wuerde ein Testlauf die Domain als 'frisch besucht' eintragen und der
     naechste Produktivlauf sie ueberspringen -- der echte Bestand veraltete,
     ohne dass es auffaellt.
+
+    reihen entsteht nur mit --reihen; ohne den Schalter wird die Datei nicht
+    angelegt.
     """
     p = f"{spur}-" if spur else ""
     return (os.path.join(PROJEKT, "eingaben", f"{p}domains.md"),
             os.path.join(PROJEKT, "ausgaben", f"{p}domain_log.json"),
-            os.path.join(PROJEKT, "ausgaben", f"{p}termine.json"))
+            os.path.join(PROJEKT, "ausgaben", f"{p}termine.json"),
+            os.path.join(PROJEKT, "ausgaben", f"{p}reihen.json"))
 
 
-DOMAINS, DOMAIN_LOG, TERMINE = _pfade()
+DOMAINS, DOMAIN_LOG, TERMINE, REIHEN = _pfade()
 
 FRISCHE_TAGE = 7        # juenger als das -> beim Sammellauf ueberspringen
 AEHNLICHKEIT = 0.6      # Startwert, nicht gemessen; siehe _aehnlich()
@@ -230,13 +234,38 @@ def verschmelze(bestand, neue, domain, heute):
                                            t.get("domain", "")))
 
 
+def verschmelze_reihen(bestand, neue, domain):
+    """Bestand + frische Reihen einer Domain -> neuer Bestand.
+
+    UMGEKEHRTE REGEL gegenueber verschmelze(). Dort gilt "nicht gefunden heisst
+    nicht weg", weil ein Termin ein Datum hat, an dem er von selbst verfaellt.
+    Eine Reihe hat keins. Sie kann nur dadurch enden, dass sie von der Seite
+    verschwindet -- bliebe sie trotzdem stehen, stuende der Meditationskreis
+    noch Jahre nach seiner letzten Sitzung im Bestand.
+
+    Die Reihen der Domain werden deshalb vollstaendig ERSETZT. Das ist sicher,
+    weil scanne() bei Fehlschlag None liefert und dieser Weg dann gar nicht
+    beschritten wird: ein misslungener Abruf loescht nichts.
+
+    Eintraege anderer Domains laufen unangetastet durch.
+    """
+    fremd = [r for r in bestand if r.get("domain") != domain]
+    frisch = [dict(r, domain=domain) for r in neue]
+    return sorted(fremd + frisch, key=lambda r: (r.get("domain", ""),
+                                                 r.get("rhythmus", ""),
+                                                 r.get("uhrzeit") or ""))
+
+
 # -------------------------------------------------------------------- Lauf
 
-def scanne(domain, heute, modell):
-    """Eine Domain -> (termine, seiten) oder (None, []) bei Misserfolg.
+def scanne(domain, heute, modell, variante="einzeln"):
+    """Eine Domain -> (termine, reihen, seiten) oder (None, None, []) bei Misserfolg.
 
     Nutzt termine_aus_domain unveraendert: dieselbe Seitenauswahl, derselbe
     Modellaufruf, dieselbe Belegpruefung wie beim Einzelaufruf.
+
+    reihen ist bei der Variante "einzeln" immer leer -- dort fragt der Auftrag
+    gar nicht danach.
     """
     print("  ...ruft Seiten ab")
     try:
@@ -247,27 +276,34 @@ def scanne(domain, heute, modell):
         # "BrowserNichtErreichbar" hilft niemandem. Domain bleibt faellig.
         hinweis = str(fehler) if fehler.args else type(fehler).__name__
         print(f"  nicht erreichbar: {hinweis}")
-        return None, []
+        return None, None, []
 
     gekappt = text[:tad.MAX_ZEICHEN]
     print(f"  ...fragt claude ({len(gelesen)} Seite(n), {len(gekappt)} Zeichen)")
-    funde, kennzahlen = tad.claude_fragen(gekappt, heute, modell)
-    if funde is None:
+    inhalt, kennzahlen = tad.claude_fragen(gekappt, heute, modell, variante)
+    if inhalt is None:
         print("  claude lieferte keine Antwort")
-        return None, [adresse for adresse, _ in gelesen]
+        return None, None, [adresse for adresse, _ in gelesen]
 
+    funde = inhalt.get("termine", [])
+    seiten = [a for a, _ in gelesen]
+    ort_pflicht = tad.ist_tour(domain)
     gut, verworfen, _ = tad.nachpruefen(funde, gekappt, heute,
-                                        seiten=[a for a, _ in gelesen],
-                                        ort_pflicht=tad.ist_tour(domain))
+                                        seiten=seiten, ort_pflicht=ort_pflicht)
+    reihen, reihen_verworfen = tad.pruefe_reihen(inhalt.get("reihen"), gekappt,
+                                                 seiten=seiten,
+                                                 ort_pflicht=ort_pflicht)
     # Vergangene getrennt ausweisen, sonst steht am Ende '4 uebernommen' neben
     # '1 im Bestand' und niemand weiss, wo die anderen drei geblieben sind.
     vorbei = len([t for t in gut if t.get("datum", "") < heute.isoformat()])
-    print(f"  {len(gelesen)} Seite(n), {len(funde)} gemeldet, "
+    print(f"  {len(gelesen)} Seite(n), "
+          f"{len(funde) + len(inhalt.get('reihen') or [])} gemeldet, "
           f"{len(gut)} uebernommen"
           + (f" (davon {vorbei} vorbei)" if vorbei else "")
-          + f", {len(verworfen)} verworfen, "
+          + (f", {len(reihen)} regelmaessig" if reihen else "")
+          + f", {len(verworfen) + len(reihen_verworfen)} verworfen, "
           f"{kennzahlen.get('kosten', 0.0):.4f} USD")
-    return gut, [adresse for adresse, _ in gelesen]
+    return gut, reihen, seiten
 
 
 def main():
@@ -293,10 +329,16 @@ def main():
     zerleger.add_argument("--trocken", action="store_true",
                           help="nur zeigen, was faellig waere; nichts scannen, "
                                "nichts schreiben")
+    zerleger.add_argument("--reihen", action="store_true",
+                          help="regelmaessige Termine ('immer dienstags') als "
+                               "zweite Liste mitnehmen, nach "
+                               "ausgaben/reihen.json. BEFRISTET, siehe "
+                               "VARIANTEN in termine_aus_domain")
     argumente = zerleger.parse_args()
 
     heute = dt.date.today()
-    domains_datei, domain_log_datei, termine_datei = _pfade(argumente.spur)
+    variante = "reihen" if argumente.reihen else "einzeln"
+    domains_datei, domain_log_datei, termine_datei, reihen_datei = _pfade(argumente.spur)
     if argumente.liste:                  # explizit gesetzt -> gewinnt gegen --spur
         domains_datei = argumente.liste
 
@@ -307,6 +349,7 @@ def main():
 
     log = _lade_json(domain_log_datei, {})
     bestand = _lade_json(termine_datei, [])
+    reihen_bestand = _lade_json(reihen_datei, []) if argumente.reihen else []
 
     faellig = [d for d in domains
                if not ist_frisch(log.get(d), heute, argumente.frische)]
@@ -324,9 +367,11 @@ def main():
     gescannt = 0
     for domain in faellig:
         print(f"{domain}")
-        termine, seiten = scanne(domain, heute, argumente.modell)
+        termine, reihen, seiten = scanne(domain, heute, argumente.modell, variante)
         if termine is not None:
             bestand = verschmelze(bestand, termine, domain, heute)
+            if argumente.reihen:
+                reihen_bestand = verschmelze_reihen(reihen_bestand, reihen, domain)
             log[domain] = {"seiten": seiten,   # seiten[0] ist die Adresse nach Weiterleitung
                            "besucht": heute.isoformat()}
             gescannt += 1
@@ -336,6 +381,8 @@ def main():
         # der Schreibvorgang ist dann nur redundant, nicht falsch.
         _schreibe_json(domain_log_datei, log)
         _schreibe_json(termine_datei, bestand)
+        if argumente.reihen:
+            _schreibe_json(reihen_datei, reihen_bestand)
 
     # Auch ohne einen einzigen Scan aufraeumen: Vergangenes soll verschwinden,
     # sobald jemand den Lauf startet, nicht erst wenn zufaellig eine Domain
@@ -346,10 +393,14 @@ def main():
 
     _schreibe_json(domain_log_datei, log)
     _schreibe_json(termine_datei, bestand)
+    if argumente.reihen:
+        _schreibe_json(reihen_datei, reihen_bestand)
 
     print(f"\n{gescannt} gescannt, {len(bestand)} Termine im Bestand"
+          + (f", {len(reihen_bestand)} Reihen" if argumente.reihen else "")
           + (f", {entfernt} vergangene entfernt" if entfernt else ""))
-    print(f"-> {termine_datei}\n-> {domain_log_datei}")
+    print(f"-> {termine_datei}\n-> {domain_log_datei}"
+          + (f"\n-> {reihen_datei}" if argumente.reihen else ""))
     return 0
 
 
