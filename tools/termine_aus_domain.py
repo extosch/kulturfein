@@ -1099,6 +1099,90 @@ def _wortdeckung(satz, im_text):
     return sum(1 for w in woerter if w in im_text) / len(woerter)
 
 
+def _nebenfelder(fund, im_text, erlaubte_seiten, ort_pflicht, verbose):
+    """Alles ausser titel und dem Zeitanker pruefen. -> (felder, grund)
+
+    Bei Erfolg (dict, None), bei Regionsverstoss (None, grund) -- der ist der
+    einzige Fehlschlag hier, der den ganzen Eintrag verwirft.
+
+    Steht als eigene Funktion da, weil Termine und Reihen sich nur im Anker
+    unterscheiden (Datum dort, Rhythmus hier) und in allem anderen nicht. Zwei
+    Kopien dieser sechzig Zeilen wuerden auseinanderlaufen, sobald jemand nur
+    eine haertet.
+
+    kuenstler/ort/beschreibung werden gegen den Text geprueft, aber anders als
+    beim Titel wirft ein Fehlschlag hier nicht den ganzen Eintrag weg — ein
+    unbestaetigtes Nebenfeld macht einen bestaetigten Termin nicht ungueltig,
+    genau wie ein unbekanntes Genre.
+
+    kuenstler/ort sind kurze Eigennamen: woertlich pruefen, Faktenrueckgrat.
+    beschreibung ist eine Zusammenfassung des Modells (WAS, nicht WER) — dort
+    nur die Wortdeckung als Untergrenze gegen Erfundenes; Namen und Instrumente
+    haelt der Prompt ganz raus, damit nichts verdreht wird.
+    """
+    genre = next((g for g in GENRES
+                  if g.lower() == (fund.get("genre") or "").strip().lower()),
+                 "Sonstiges")
+
+    # kuenstler kann mehrere sein ('Lucie Betz, Miku Arizono'). Steht der
+    # ganze String nicht so im Text, jeden Namen EINZELN pruefen und die
+    # bestaetigten wieder zusammensetzen -- sonst faellt bei jeder
+    # Doppelnennung das ganze Feld weg.
+    kuenstler = (fund.get("kuenstler") or "").strip()
+    if kuenstler and _normal(kuenstler) not in im_text:
+        teile = re.split(r"\s*,\s*|\s+&\s+|\s+und\s+", kuenstler, flags=re.I)
+        bestaetigt = [n.strip() for n in teile
+                      if n.strip() and _normal(n) in im_text]
+        kuenstler = ", ".join(dict.fromkeys(bestaetigt))
+    # Haengt dem Modellwert ein Trenner an ('Murat Coskun, Beatriz Picas, '),
+    # steht er oft trotzdem so im Text und der Zerleger oben greift nicht.
+    kuenstler = re.sub(r"^[\s,;&]+|[\s,;&]+$", "", kuenstler)
+    ort = fund.get("ort") or ""
+    if ort and _normal(ort) not in im_text:
+        ort = ""
+
+    # Regionsfilter "Freiburg und Umgebung". Greift nur, wenn eingaben/
+    # region.md vorliegt (sonst REGION == [], Block uebersprungen). Anders
+    # als die Nebenfelder oben wirft ein Fehlschlag hier den GANZEN Eintrag
+    # weg: ausserhalb der Region ist er kein Fund, sondern Rauschen.
+    # `ort` ist an dieser Stelle bereits gegen den Seitentext belegt; ein
+    # oben geleerter (unbelegter) `ort` zaehlt wie "keine Angabe".
+    #
+    # Ein FEHLENDER ort verwirft nur bei Tour-Domains (ort_pflicht). Dort
+    # traegt der ort die Geografie, ohne ihn landen Berlin und Wien im
+    # Freiburger Kalender. Bei Spielstaetten steckt die Geografie in der
+    # Domain, dort waere Verwerfen der teurere Fehler (siehe TOUR_DATEI).
+    if REGION:
+        if ort and not _in_region(ort):
+            return None, f"Ort ausserhalb der Region: {ort!r}"
+        if not ort and ort_pflicht:
+            return None, "ohne Ortsangabe, aber Tour-Domain"
+
+    beschreibung = _kuerze(fund.get("beschreibung") or "", BESCHREIBUNG_MAX)
+    if beschreibung:
+        deckung = _wortdeckung(beschreibung, im_text)
+        if deckung < BESCHREIBUNG_DECKUNG:
+            if verbose:
+                print(f"  beschreibung verworfen ({deckung:.0%}): "
+                      f"{beschreibung!r}", file=sys.stderr)
+            beschreibung = ""
+
+    # fundstelle: die konkrete Seite, auf der der Eintrag steht. Muss eine der
+    # gelesenen Adressen sein, sonst leer -- baue_webseite.py faellt dann auf
+    # die Domain-Startseite zurueck (domain_log.json seiten[0]).
+    fundstelle = (fund.get("fundstelle") or "").strip()
+    if fundstelle and fundstelle.rstrip("/").lower() not in erlaubte_seiten:
+        if verbose:
+            print(f"  fundstelle verworfen (nicht gelesen): {fundstelle!r}",
+                  file=sys.stderr)
+        fundstelle = ""
+
+    # Reihenfolge wie bisher: sie bestimmt, wie termine.json aussieht, und ein
+    # umsortiertes Feld waere ein Diff ohne Inhalt.
+    return {"kuenstler": kuenstler, "ort": ort, "beschreibung": beschreibung,
+            "genre": genre, "fundstelle": fundstelle}, None
+
+
 def nachpruefen(funde, text, heute, verbose=False, seiten=None, ort_pflicht=False):
     """Titel UND Datum muessen im Text stehen, Genre aus der Liste.
     -> (gute, verworfene, belege)
@@ -1178,80 +1262,15 @@ def nachpruefen(funde, text, heute, verbose=False, seiten=None, ort_pflicht=Fals
             verworfen.append((fund, "Datum steht nicht im Text"))
             continue
 
-        genre = next((g for g in GENRES
-                      if g.lower() == (fund.get("genre") or "").strip().lower()),
-                     "Sonstiges")
-
-        # kuenstler/ort/beschreibung werden gegen den Text geprueft, aber anders
-        # als beim Titel wirft ein Fehlschlag hier nicht den ganzen Termin weg —
-        # ein unbestaetigtes Nebenfeld macht einen bestaetigten Termin nicht
-        # ungueltig, genau wie ein unbekanntes Genre.
-        #
-        # kuenstler/ort sind kurze Eigennamen: woertlich pruefen, Faktenrueckgrat.
-        # beschreibung ist eine Zusammenfassung des Modells (WAS, nicht WER) —
-        # dort nur die Wortdeckung als Untergrenze gegen Erfundenes; Namen und
-        # Instrumente haelt der Prompt ganz raus, damit nichts verdreht wird.
-        #
-        # kuenstler kann mehrere sein ('Lucie Betz, Miku Arizono'). Steht der
-        # ganze String nicht so im Text, jeden Namen EINZELN pruefen und die
-        # bestaetigten wieder zusammensetzen -- sonst faellt bei jeder
-        # Doppelnennung das ganze Feld weg.
-        kuenstler = (fund.get("kuenstler") or "").strip()
-        if kuenstler and _normal(kuenstler) not in im_text:
-            teile = re.split(r"\s*,\s*|\s+&\s+|\s+und\s+", kuenstler, flags=re.I)
-            bestaetigt = [n.strip() for n in teile
-                          if n.strip() and _normal(n) in im_text]
-            kuenstler = ", ".join(dict.fromkeys(bestaetigt))
-        # Haengt dem Modellwert ein Trenner an ('Murat Coskun, Beatriz Picas, '),
-        # steht er oft trotzdem so im Text und der Zerleger oben greift nicht.
-        kuenstler = re.sub(r"^[\s,;&]+|[\s,;&]+$", "", kuenstler)
-        ort = fund.get("ort") or ""
-        if ort and _normal(ort) not in im_text:
-            ort = ""
-
-        # Regionsfilter "Freiburg und Umgebung". Greift nur, wenn eingaben/
-        # region.md vorliegt (sonst REGION == [], Block uebersprungen). Anders
-        # als die Nebenfelder oben wirft ein Fehlschlag hier den GANZEN Termin
-        # weg: ausserhalb der Region ist er kein Fund, sondern Rauschen.
-        # `ort` ist an dieser Stelle bereits gegen den Seitentext belegt; ein
-        # oben geleerter (unbelegter) `ort` zaehlt wie "keine Angabe".
-        #
-        # Ein FEHLENDER ort verwirft nur bei Tour-Domains (ort_pflicht). Dort
-        # traegt der ort die Geografie, ohne ihn landen Berlin und Wien im
-        # Freiburger Kalender. Bei Spielstaetten steckt die Geografie in der
-        # Domain, dort waere Verwerfen der teurere Fehler (siehe TOUR_DATEI).
-        if REGION:
-            if ort and not _in_region(ort):
-                verworfen.append((fund, f"Ort ausserhalb der Region: {ort!r}"))
-                continue
-            if not ort and ort_pflicht:
-                verworfen.append((fund, "ohne Ortsangabe, aber Tour-Domain"))
-                continue
-
-        beschreibung = _kuerze(fund.get("beschreibung") or "", BESCHREIBUNG_MAX)
-        if beschreibung:
-            deckung = _wortdeckung(beschreibung, im_text)
-            if deckung < BESCHREIBUNG_DECKUNG:
-                if verbose:
-                    print(f"  beschreibung verworfen ({deckung:.0%}): "
-                          f"{beschreibung!r}", file=sys.stderr)
-                beschreibung = ""
-
-        # fundstelle: die konkrete Seite, auf der der Termin steht. Muss eine der
-        # gelesenen Adressen sein, sonst leer -- baue_webseite.py faellt dann auf
-        # die Domain-Startseite zurueck (domain_log.json seiten[0]).
-        fundstelle = (fund.get("fundstelle") or "").strip()
-        if fundstelle and fundstelle.rstrip("/").lower() not in erlaubte_seiten:
-            if verbose:
-                print(f"  fundstelle verworfen (nicht gelesen): {fundstelle!r}",
-                      file=sys.stderr)
-            fundstelle = ""
+        felder, grund = _nebenfelder(fund, im_text, erlaubte_seiten,
+                                     ort_pflicht, verbose)
+        if felder is None:
+            verworfen.append((fund, grund))
+            continue
 
         belege[fund["datum"]] = vorhanden[datum]
         gut.append({"datum": fund["datum"], "uhrzeit": fund.get("uhrzeit") or "",
-                    "titel": titel, "kuenstler": kuenstler, "ort": ort,
-                    "beschreibung": beschreibung, "genre": genre,
-                    "fundstelle": fundstelle})
+                    "titel": titel, **felder})
     return sorted(gut, key=lambda t: (t["datum"], t["uhrzeit"])), verworfen, belege
 
 
