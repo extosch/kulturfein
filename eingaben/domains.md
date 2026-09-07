@@ -1,15 +1,10 @@
 ## Konzert
-eineartensemble.de
-mehrklang-freiburg.de
 xn--tri-kma.com
 murat-coskun.eu
-sternensee-band.de
-ensemble-recherche.de
 barockorchester.de
 barockkirche-st-peter.de
 stadtkantorat-freiburg.de
 muensterorgelkonzerte.de
-kloster-st-lioba.de
 #swr.de/swrclassic
 #bbksuedbaden.de
 #jazzfestival-freiburg.de
@@ -37,8 +32,6 @@ jos-fritz.de
 josfritzcafe.de
 
 ## Spirituell
-buddhistisches-zentrum-freiburg.de
-tibet-kailash-haus.de   
 
 ## Tanz (und Performance)
 instagram.com/betz.lucie/
