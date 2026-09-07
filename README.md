@@ -324,6 +324,17 @@ Dazu nennt der Prompt die Gegenbeispiele ausdrücklich. Nach beiden Änderungen 
 Modell bei Kloster St. Lioba gar keinen solchen Eintrag mehr, und die acht echten bei
 `tibet-kailash-haus.de` bleiben vollständig erhalten.
 
+**Nach der Umbenennung am 07.09.2026 vollständig nachgemessen**, weil der Auftrag der
+neuen Fassung das Feld beim Namen nennt und sich dadurch geändert hat. Sammellauf über alle
+acht `test_ok`-Domains: **89 Termine gegen 92 in der Referenz, keine Verschiebung, null
+regelmäßige** — die beiden Fehlfunde des ersten Laufs sind weg, `_ist_rhythmus()` und die
+Gegenbeispiele im Prompt greifen.
+
+Der einzige auffällige Rückgang war `ensemble-recherche.de` (12 → 8). `--vergleich` auf
+identischem Text entlastet den Prompt: dort liefert die neue Fassung **12 Termine gegen 7**
+der bewährten. Die Domain schwankt über drei Läufe zwischen 7, 12 und 8 — sie ist der
+bekannte Problemfall mit hoher Verwerfungsrate, unabhängig von dieser Änderung.
+
 Der Sammellauf führt mit `--termine-regelmaessig` einen zweiten Bestand in
 `ausgaben/termine_regelmaessig.json`.
 `verschmelze_termine_regelmaessig()` dreht die Verfallsregel um: bei Terminen gilt „nicht gefunden heißt
