@@ -109,6 +109,16 @@ BESCHREIBUNG_DECKUNG = 0.6  # so viel der Inhaltswoerter muss im Seitentext steh
 SOCIAL_POSTS = 4       # Instagram: so viele der neuesten Beitraege lesen (social_holen)
 BROWSER_PORT = 9222    # Chrome-Debug-Port fuer social_holen
 
+# Haikus Ausgabegrenze, gemessen am 07.09.2026 (modelUsage.maxOutputTokens in der
+# CLI-Antwort). Wird sie ueberschritten, liefert claude KEINE gekappte Antwort,
+# sondern bricht ab: exit 1, is_error, und im result-Feld "Claude's response
+# exceeded the ... output token maximum". Das faengt der returncode-Zweig in
+# claude_fragen schon ab -- gefaehrlich ist nicht der Abbruch, sondern dass man
+# ihn kommen sieht und nichts sagt. Der Vorderhaus-Lauf liegt bei rund 15.000
+# Ausgabe-Token (130 Termine), also bei knapp der Haelfte.
+AUSGABE_GRENZE = 32000
+AUSGABE_WARNUNG = 0.75  # Anteil davon, ab dem eine Warnung auf stderr geht
+
 # Woran eine Termin-Unterseite zu erkennen ist. Geprueft wird gegen Linktext UND
 # URL-Pfad. Zwei Klassen, und der Unterschied traegt die ganze Auswahl:
 #
@@ -746,6 +756,24 @@ def _json_herausschneiden(rohtext):
     return ""
 
 
+def _fehlergrund(lauf):
+    """Klartext-Ursache eines fehlgeschlagenen claude-Aufrufs. -> str
+
+    Gemessen am 07.09.2026: bei ueberschrittener Ausgabegrenze endet die CLI mit
+    exit 1, schreibt aber NICHTS auf stderr -- ihr JSON geht wie im Erfolgsfall
+    nach stdout, mit "is_error": true und der Ursache im Feld 'result'. Deshalb
+    erst dort nachsehen und stderr nur als Rueckfallebene nehmen.
+    """
+    try:
+        antwort = json.loads(lauf.stdout or "")
+        grund = str(antwort.get("result") or "").strip()
+        if grund:
+            return grund[:400]
+    except (json.JSONDecodeError, AttributeError):
+        pass
+    return (lauf.stderr or lauf.stdout or "(keine Meldung)")[:400]
+
+
 def claude_fragen(text, heute, modell="haiku"):
     """Der konfektionierte Aufruf. -> (funde, kennzahlen)
 
@@ -774,8 +802,12 @@ def claude_fragen(text, heute, modell="haiku"):
         return None, {}
 
     if lauf.returncode != 0:
+        # Die Ursache steht in stdout, nicht in stderr: die CLI antwortet auch im
+        # Fehlerfall mit ihrem JSON und legt den Klartext ins Feld 'result'
+        # ("Claude's response exceeded the ... output token maximum"). Wer nur
+        # stderr zeigt, sieht "endete mit 1" und weiss nichts.
         print(f"FEHLER: claude endete mit {lauf.returncode}\n"
-              f"{(lauf.stderr or '')[:400]}", file=sys.stderr)
+              f"{_fehlergrund(lauf)}", file=sys.stderr)
         return None, {}
 
     try:
@@ -783,14 +815,6 @@ def claude_fragen(text, heute, modell="haiku"):
     except json.JSONDecodeError:
         print(f"FEHLER: Antwort ist kein JSON:\n{lauf.stdout[:300]}", file=sys.stderr)
         return None, {}
-
-    inhalt = antwort.get("structured_output") or {}
-    if not inhalt and antwort.get("result"):
-        geschnitten = _json_herausschneiden(antwort["result"])
-        try:
-            inhalt = json.loads(geschnitten) if geschnitten else {}
-        except json.JSONDecodeError:
-            inhalt = {}
 
     nutzung = antwort.get("usage", {})
     kennzahlen = {
@@ -800,6 +824,28 @@ def claude_fragen(text, heute, modell="haiku"):
               + nutzung.get("cache_read_input_tokens", 0),
         "aus": nutzung.get("output_tokens", 0),
     }
+    if kennzahlen["aus"] > AUSGABE_GRENZE * AUSGABE_WARNUNG:
+        print(f"WARNUNG: {kennzahlen['aus']} Ausgabe-Token, Grenze ist "
+              f"{AUSGABE_GRENZE}. Diesmal gutgegangen; bei etwas mehr Terminen "
+              f"bricht der Aufruf ab.", file=sys.stderr)
+
+    inhalt = antwort.get("structured_output") or {}
+    if not inhalt and antwort.get("result"):
+        geschnitten = _json_herausschneiden(antwort["result"])
+        try:
+            inhalt = json.loads(geschnitten) if geschnitten else {}
+        except json.JSONDecodeError:
+            inhalt = {}
+        # Kein verwertbares JSON, obwohl das Modell etwas gesagt hat: das ist ein
+        # Fehlschlag und kein leeres Ergebnis. Der Unterschied entscheidet, ob
+        # domain_lauf die Domain faellig laesst oder sie sieben Tage lang fuer
+        # erfolgreich gescannt haelt (siehe dort ist_frisch). Der bekannte Weg
+        # hierher -- eine zu lange Antwort -- endet schon oben mit exit 1; das
+        # hier ist das Netz fuer die uebrigen.
+        if not inhalt:
+            print(f"FEHLER: Antwort enthaelt kein verwertbares JSON:\n"
+                  f"{str(antwort['result'])[:300]}", file=sys.stderr)
+            return None, kennzahlen
     return inhalt.get("termine", []), kennzahlen
 
 

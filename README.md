@@ -535,6 +535,19 @@ Unterseite kann außerdem das gesamte Zeichenbudget aufbrauchen: beim E-Werk Fre
 `aktuelles-programm` mit 26.000 Zeichen die drei folgenden Kandidaten verdrängt.
 `--verbose` meldet das ehrlich („Zeichenbudget erschöpft"), gelöst ist es nicht.
 
+Die **Ausgabe**seite hat eine zweite, härtere Grenze, gemessen am 07.09.2026: Haiku
+liefert höchstens **32.000 Ausgabe-Token** (`modelUsage.maxOutputTokens` in der
+CLI-Antwort). Wird sie überschritten, kommt keine gekappte Antwort, sondern ein Abbruch —
+`exit 1`, und im Feld `result` steht „Claude's response exceeded the … output token
+maximum". Der Vorderhaus-Lauf braucht rund 15.000, liegt also bei knapp der Hälfte.
+
+Zwei Dinge waren daran zu reparieren, keins davon war das befürchtete stille Verschlucken:
+die Ursache stand in **stdout**, angezeigt wurde aber `stderr` — man sah „endete mit 1"
+und sonst nichts (`_fehlergrund()`). Und ab 75 % der Grenze warnt der Lauf jetzt, solange
+er noch durchgeht. Ungelöst bleibt, was bei einem Veranstalter mit mehr als etwa 250
+Terminen zu tun ist; die naheliegende Antwort wäre, den Text an den
+`--- <adresse> ---`-Grenzen zu teilen und zwei Aufrufe zu machen.
+
 **2. Die Prüfung ist auf Kalenderseiten wirkungslos.** Wo ein Monatsgitter alle Zahlen von
 1 bis 31 aufführt, ist jedes Datum belegbar. Der Schutz greift dort, wo die Stiftung
 scheiterte — bei Fließtext mit wenigen Datumsangaben —, und nicht dort, wo ohnehin ein
