@@ -1598,28 +1598,32 @@ def vergleich_zeigen(text, heute, modell, seiten, ort_pflicht):
 
     a_gut, _, _, _, _ = ergebnisse["einzeln"]
     n_gut, _, n_reihen, _, _ = ergebnisse["reihen"]
-    a_titel = {t["titel"] for t in a_gut}
-    n_titel = {t["titel"] for t in n_gut}
+    # Schluessel ist (datum, titel), nicht der Titel allein: die Sternensee-Band
+    # spielt ihr "Dreisam-Bruecken-Konzert" fuenfmal an fuenf Daten. Als
+    # Titelmenge waere das EIN Eintrag, und der Vergleich meldete Gleichstand,
+    # waehrend vier Termine fehlen.
+    a_schluessel = {(t["datum"], t["titel"]) for t in a_gut}
+    n_schluessel = {(t["datum"], t["titel"]) for t in n_gut}
     reihen_titel = {r["titel"] for r in n_reihen}
 
     print("", file=sys.stderr)
-    nur_alt = sorted(a_titel - n_titel)
+    nur_alt = sorted(a_schluessel - n_schluessel)
     if nur_alt:
         print(f"  nur einzeln ({len(nur_alt)}) — als Termin verloren:",
               file=sys.stderr)
-        for titel in nur_alt:
+        for datum, titel in nur_alt:
             wohin = "  >>> steht drueben unter REIHEN" if titel in reihen_titel else ""
-            print(f"    {titel[:70]}{wohin}", file=sys.stderr)
+            print(f"    {datum}  {titel[:58]}{wohin}", file=sys.stderr)
     else:
         print("  nur einzeln: keine — kein Termin ist verlorengegangen",
               file=sys.stderr)
 
-    nur_neu = sorted(n_titel - a_titel)
+    nur_neu = sorted(n_schluessel - a_schluessel)
     if nur_neu:
         print(f"  nur reihen ({len(nur_neu)}) — zusaetzlich als Termin:",
               file=sys.stderr)
-        for titel in nur_neu:
-            print(f"    {titel[:70]}", file=sys.stderr)
+        for datum, titel in nur_neu:
+            print(f"    {datum}  {titel[:58]}", file=sys.stderr)
 
     if n_reihen:
         print(f"\n  REIHEN ({len(n_reihen)}):", file=sys.stderr)

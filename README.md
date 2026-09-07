@@ -244,6 +244,83 @@ in `_lies()` verloren, aber jeder Seitenabschnitt im Blob trägt schon eine Zeil
 `baue_webseite.py` auf `domain_log.json → seiten[0]` (Domain-Startseite) zurück. Bei
 Instagram ist die `fundstelle` der konkrete `/p/<shortcode>/`-Post.
 
+### Regelmäßige Termine: `--reihen` (befristet parallel)
+
+Eine Veranstaltung, die „immer dienstags, 18:00 – 19:30 Uhr" stattfindet, hat **kein
+Datum**. Sie fiel bis zum 07.09.2026 doppelt durch: der Prompt verbot sie, und
+`nachpruefen()` hätte sie nicht belegen können, weil es nichts zu belegen gibt. Damit
+fehlten Meditationskreise, Gottesdienste, offene Proben.
+
+Der Anker wechselt deshalb vom Datum auf die **Regel**: `rhythmus` trägt den
+Wiederholungstext wörtlich von der Seite und wird zweistufig geprüft wie sonst der Titel.
+Steht er dort nicht, hat das Modell formuliert statt abgeschrieben, und der Eintrag fällt.
+Alle übrigen Felder und Prüfungen sind dieselben wie beim Termin (`_nebenfelder()`).
+
+Die Abgrenzung ist die heikle Stelle, und sie hat zwei Seiten:
+
+- **Ausgeschriebene Einzeldaten bleiben Einzeltermine**, auch mehrere für dieselbe
+  Veranstaltung. Der „Sonntagskaffee" bei Kloster St. Lioba mit drei genannten Daten wird
+  nicht zur Reihe zusammengefasst — das wäre eine Ableitung des Modells, kein Textbeleg.
+- **Öffnungszeiten sind keine Reihe.** Eine Ausstellung, die sonntags geöffnet hat, findet
+  nicht sonntags statt. Der Satz steht ausdrücklich im Prompt, und das Verbot, einen
+  Zeitraum aufzulösen, bleibt wörtlich erhalten.
+
+**Der Schalter ist befristet.** Der bewährte Prompt bleibt Vorgabe; die neue Fassung hängt
+an `--reihen` (in beiden Skripten). `VARIANTEN` in
+[`tools/termine_aus_domain.py`](tools/termine_aus_domain.py) bündelt Auftrag, Schema und
+Reihenprüfung an **einer** Stelle — vier verstreute `if`-Zweige wären vier Orte, an denen
+alter und neuer Weg unbemerkt auseinanderlaufen. Gegen die Drift der zwei Prompt-Fassungen
+stehen die Feldbeschreibungen als `_FELDER` nur einmal da; `auftrag()` und `SCHEMA` sind
+dadurch **byte-identisch** mit dem Stand davor geblieben, sonst vergliche man nicht die
+Prompt-Differenz, sondern einen Umbau.
+
+`--reihen-vergleich` setzt beide Fassungen auf **denselben** Seitentext an (zwei
+Modellaufrufe, ein Abruf). Genau dafür sitzt die Weiche im Code und nicht in zwei
+Git-Ständen: nur so fällt die Änderung der Website zwischen zwei Läufen als Störgröße weg.
+
+Gemessen am 07.09.2026, je zwei Aufrufe auf identischem Text:
+
+| Domain | einzeln | reihen | Reihen | verschoben |
+|---|---:|---:|---:|---|
+| tibet-kailash-haus.de | 10 | 10 | **8** | – |
+| kloster-st-lioba.de | 48 | 63 | 0 | – |
+| buddhistisches-zentrum-freiburg.de | 58 | 58 | 0 | – |
+| ensemble-recherche.de | 7 | 12 | 0 | – |
+| kreativpioniere-freiburg.de | 8 | 9 | 0 | – |
+| sternensee-band.de | 8 | 9 | 0 | – |
+| mehrklang-freiburg.de | 7 | 7 | 0 | – |
+| stiftung-konkrete-kunst.de | 6 | 6 | 0 | – |
+| klavierdepot-freiburg.de | 4 | 4 | 0 | – |
+
+**Kein einziger Termin ist zur Reihe geworden** — die befürchtete Verschiebung, bei der
+sich die neue Rubrik füllt, während `termine.json` ärmer wird, ist nicht eingetreten. Die
+Differenzen sind durchweg die bekannte Titellängen-Schwankung („Klang der Stille" gegen
+„Klang der Stille Live-Klangreise mit Klangschalen und Bansuri-Flöte").
+
+Die vielen Nullen sind **kein Versagen**: eine Textsuche nach Wiederholungsmustern zeigt,
+dass diese Seiten kaum welche enthalten. Bei `kloster-st-lioba.de` ist die einzige
+Fundstelle „Sonntagskaffee" — ein Eigenname, kein Rhythmus.
+
+Die harte Probe steht bei `tibet-kailash-haus.de`, weil dort **beides** vorkommt: „immer
+dienstags, 18:00 – 19:30 Uhr" (echte Reihe) und „Der Tibet-Shop ist montags, mittwochs und
+freitags von 15:00 bis 18:00 Uhr geöffnet" (Öffnungszeit). Die acht gefundenen Reihen sind
+Meditationen, Puja und Singkreis; Shop und Garten-Café sind nicht dabei.
+
+Ein Einzellauf beweist dabei nichts: `sternensee-band.de` lieferte im ersten Durchgang 7
+gegen 1 Termin, im zweiten 8 gegen 9. Deshalb vergleicht `--reihen-vergleich` über den
+Schlüssel `(datum, titel)` und nicht über Titel allein — die Band spielt ihr
+„Dreisam-Brücken-Konzert" fünfmal an fünf Daten, als Titelmenge wäre das ein Eintrag.
+
+Der Sammellauf führt mit `--reihen` einen zweiten Bestand in `ausgaben/reihen.json`.
+`verschmelze_reihen()` dreht die Verfallsregel um: bei Terminen gilt „nicht gefunden heißt
+nicht weg", weil ein Datum von selbst verfällt — eine Reihe hat keins und kann nur dadurch
+enden, dass sie von der Seite verschwindet. Die Reihen einer Domain werden deshalb
+vollständig **ersetzt**. Sicher ist das, weil `scanne()` bei Fehlschlag `None` liefert: ein
+misslungener Abruf löscht nichts.
+
+Noch **nicht** angezeigt — `baue_webseite.py` liest `reihen.json` nicht. Erst sehen, was
+hereinkommt, dann über die Darstellung entscheiden.
+
 ### Regionsfilter „Freiburg und Umgebung"
 
 Liegt [`eingaben/region.md`](eingaben/region.md) vor, verwirft `nachpruefen()` jeden Termin,
