@@ -298,28 +298,44 @@ SYSTEMPROMPT = ("Du liest Text von Veranstalter-Websites und gibst Termine als "
                 "JSON zurueck. Antworte ausschliesslich mit JSON, ohne Vorrede "
                 "und ohne Code-Zaun.")
 
+def _eintrag(anker):
+    """Die Felder eines Eintrags. anker ist 'datum' oder 'rhythmus'.
+
+    Termine und Reihen unterscheiden sich nur darin, woran sie haengen; alles
+    andere ist gleich. Einmal beschrieben, damit die beiden Schemata nicht
+    auseinanderlaufen koennen.
+    """
+    return {
+        "type": "object",
+        "properties": {
+            anker: {"type": "string"},
+            "uhrzeit": {"type": "string"},
+            "titel": {"type": "string"},
+            "kuenstler": {"type": "string"},
+            "ort": {"type": "string"},
+            "beschreibung": {"type": "string"},
+            "genre": {"type": "string", "enum": GENRES},
+            "fundstelle": {"type": "string"},
+        },
+        "required": [anker, "titel", "genre"],
+    }
+
+
 SCHEMA = json.dumps({
     "type": "object",
-    "properties": {
-        "termine": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "datum": {"type": "string"},
-                    "uhrzeit": {"type": "string"},
-                    "titel": {"type": "string"},
-                    "kuenstler": {"type": "string"},
-                    "ort": {"type": "string"},
-                    "beschreibung": {"type": "string"},
-                    "genre": {"type": "string", "enum": GENRES},
-                    "fundstelle": {"type": "string"},
-                },
-                "required": ["datum", "titel", "genre"],
-            },
-        }
-    },
+    "properties": {"termine": {"type": "array", "items": _eintrag("datum")}},
     "required": ["termine"],
+}, ensure_ascii=False)
+
+# Beide Listen sind Pflicht: ein leeres Array ist eine Aussage ("nichts
+# gefunden"), ein fehlendes Feld nicht.
+SCHEMA_REIHEN = json.dumps({
+    "type": "object",
+    "properties": {
+        "termine": {"type": "array", "items": _eintrag("datum")},
+        "reihen": {"type": "array", "items": _eintrag("rhythmus")},
+    },
+    "required": ["termine", "reihen"],
 }, ensure_ascii=False)
 
 
@@ -356,6 +372,23 @@ def auftrag(heute):
         "eingeleitet durch eine Zeile '--- <adresse> ---'.\n\n"
         "Datum als JJJJ-MM-TT, Uhrzeit als HH:MM (leer lassen, wenn keine "
         "angegeben ist).\n\n"
+        + _FELDER +
+        "Jedes zurueckgegebene Datum muss WORTWOERTLICH im Text stehen. Rechne "
+        "nichts aus. Ein Zeitraum ('13.09.2026 bis 08.11.2026') ist EINE Angabe "
+        "und keine Reihe von Einzelterminen — loese ihn nicht in Wochentage auf. "
+        "Wiederkehrende Oeffnungszeiten ('Sonntags von 11:30 bis 16:00 Uhr') "
+        "sind kein Termin. Sind fuer dieselbe Veranstaltung mehrere Daten "
+        "einzeln genannt, gib jedes davon zurueck.\n\n"
+        + _NICHTS_ERFINDEN
+    )
+
+
+# Die Feldbeschreibungen sind in beiden Auftragsfassungen wortgleich, und genau
+# hier droht der Schaden der Doppelung: wer nur eine Kopie haertet, vergleicht
+# spaeter zwei zufaellige Staende statt alt gegen neu. Deshalb stehen sie EINMAL
+# da. Was die Fassungen wirklich unterscheidet -- Kopf, Zeitanker, Schluss --
+# steht bei ihnen und ist damit auf einen Blick zu sehen.
+_FELDER = (
         "titel ist EINE ZUSAMMENHAENGENDE Passage aus dem Text, Zeichen fuer "
         "Zeichen abgeschrieben — mit Anfuehrungszeichen, mit Tippfehlern, ohne "
         "Glaettung. Setze ihn NICHT aus mehreren Textstellen zusammen. Stelle "
@@ -386,18 +419,87 @@ def auftrag(heute):
         "wortgetreu. Steht der Termin in mehreren Abschnitten, nimm den mit den "
         "meisten Details. Nur eine der '--- <adresse> ---'-Zeilen, nichts "
         "anderes.\n\n"
-        "Jedes zurueckgegebene Datum muss WORTWOERTLICH im Text stehen. Rechne "
-        "nichts aus. Ein Zeitraum ('13.09.2026 bis 08.11.2026') ist EINE Angabe "
-        "und keine Reihe von Einzelterminen — loese ihn nicht in Wochentage auf. "
-        "Wiederkehrende Oeffnungszeiten ('Sonntags von 11:30 bis 16:00 Uhr') "
-        "sind kein Termin. Sind fuer dieselbe Veranstaltung mehrere Daten "
-        "einzeln genannt, gib jedes davon zurueck.\n\n"
+)
+
+_NICHTS_ERFINDEN = (
         "KEINE Veranstaltung sind: Nachrichten und Meldungen, Rueckblicke auf "
         "Vergangenes, Ausstellungsdauern, Oeffnungszeiten, Jahresarchive "
         "vergangener Spielzeiten, Pressemitteilungen, Anfahrtshinweise, "
         "Preisangaben.\n\n"
         "Erfinde nichts. Steht kein Termin im Text, gib eine leere Liste zurueck."
+)
+
+
+def auftrag_reihen(heute):
+    """Dieselbe Aufgabe, aber mit zwei Listen: Termine und Reihen.
+
+    BEFRISTET. Steht neben auftrag(), bis gemessen ist, ob die Reihen-Fassung
+    die bewaehrte Ausbeute haelt (siehe VARIANTEN). Dann wird sie die Vorgabe
+    und die andere faellt weg.
+
+    Der Grund fuer die zweite Liste: eine regelmaessige Veranstaltung ('jeden
+    Dienstag 20 Uhr') hat kein Datum. Sie faellt heute doppelt durch -- der
+    Prompt verbietet sie, und nachpruefen() koennte sie gar nicht belegen, weil
+    es nichts zu belegen gibt. Damit fehlen Gottesdienste, Meditationskreise,
+    offene Proben.
+
+    Der Anker wechselt deshalb vom Datum auf die Regel: rhythmus traegt den
+    Wiederholungstext woertlich aus der Seite und wird geprueft wie sonst der
+    Titel. Das Faktenrueckgrat bleibt, nur sein Angelpunkt ist ein anderer.
+
+    Die heikle Grenze ist die zur Oeffnungszeit. 'Sonntags von 11:30 bis 16:00
+    Uhr' war der Ausloeser der neun Geistervernissagen (siehe auftrag) und darf
+    auch als Reihe nicht durchkommen: eine Ausstellung, die sonntags geoeffnet
+    hat, findet nicht sonntags statt. Deshalb steht der Satz ausdruecklich drin,
+    und das Verbot, einen Zeitraum aufzuloesen, bleibt woertlich erhalten.
+    """
+    return (
+        f"Heute ist der {heute:%d.%m.%Y}. Lies den folgenden Text von einer "
+        "Veranstalter-Website und gib alle ANGEKUENDIGTEN Veranstaltungen "
+        "zurueck. Der Text kann mehrere Unterseiten enthalten, jeweils "
+        "eingeleitet durch eine Zeile '--- <adresse> ---'.\n\n"
+        "Es gibt ZWEI Listen. In termine gehoert, was an einem ausgeschriebenen "
+        "Datum stattfindet. In reihen gehoert, was sich nach einer im Text "
+        "genannten Regel wiederholt, ohne dass Einzeldaten dastehen.\n\n"
+        "Datum als JJJJ-MM-TT, Uhrzeit als HH:MM (leer lassen, wenn keine "
+        "angegeben ist).\n\n"
+        + _FELDER +
+        "rhythmus ist EINE ZUSAMMENHAENGENDE Passage aus dem Text, Zeichen fuer "
+        "Zeichen abgeschrieben, die sagt, WANN sich die Veranstaltung "
+        "wiederholt ('jeden Dienstag', 'Sonntags 10 Uhr', 'jeden ersten Freitag "
+        "im Monat'). Setze sie NICHT aus mehreren Textstellen zusammen und "
+        "formuliere sie nicht um. Nur Eintraege in reihen haben einen "
+        "rhythmus.\n\n"
+        "Jedes zurueckgegebene Datum muss WORTWOERTLICH im Text stehen. Rechne "
+        "nichts aus. Ein Zeitraum ('13.09.2026 bis 08.11.2026') ist EINE Angabe "
+        "und keine Reihe von Einzelterminen — loese ihn nicht in Wochentage auf. "
+        "Sind fuer dieselbe Veranstaltung mehrere Daten einzeln genannt, gib "
+        "jedes davon zurueck.\n\n"
+        "Stehen Einzeldaten ausgeschrieben da, gehoert jedes davon in termine — "
+        "auch wenn es mehrere fuer dieselbe Veranstaltung sind. Nur wenn KEINE "
+        "Einzeldaten dastehen, sondern eine Wiederholungsregel, gehoert der "
+        "Eintrag in reihen.\n\n"
+        "Oeffnungszeiten sind KEINE Reihe: eine Ausstellung, die sonntags "
+        "geoeffnet hat ('Sonntags von 11:30 bis 16:00 Uhr'), findet nicht "
+        "sonntags statt. Eine Reihe ist eine Veranstaltung, die zu einem festen "
+        "Zeitpunkt beginnt.\n\n"
+        + _NICHTS_ERFINDEN + " Dasselbe gilt fuer reihen."
     )
+
+
+# Genau EINE Weiche, nicht vier. Auftrag, Schema und Reihenpruefung gehoeren
+# zusammen; verstreute if-Zweige waeren vier Stellen, an denen alter und neuer
+# Weg unbemerkt auseinanderlaufen koennen.
+#
+# BEFRISTET: Zeigen zwei Vergleichslaeufe, dass die Reihen-Fassung keine
+# Einzeltermine in reihen abzieht und die Ausbeute haelt, wird "reihen" die
+# Vorgabe und "einzeln" geloescht -- eine Zeile hier statt einer Suche durch die
+# ganze Datei. Bleibt reihen dauerhaft leer, faellt umgekehrt die neue Fassung
+# weg. Was nicht passieren darf, ist dass beide stehenbleiben.
+VARIANTEN = {
+    "einzeln": (auftrag,        SCHEMA,        False),
+    "reihen":  (auftrag_reihen, SCHEMA_REIHEN, True),
+}
 
 
 # ------------------------------------------------------------------ Seiten holen
@@ -774,17 +876,23 @@ def _fehlergrund(lauf):
     return (lauf.stderr or lauf.stdout or "(keine Meldung)")[:400]
 
 
-def claude_fragen(text, heute, modell="haiku"):
-    """Der konfektionierte Aufruf. -> (funde, kennzahlen)
+def claude_fragen(text, heute, modell="haiku", variante="einzeln"):
+    """Der konfektionierte Aufruf. -> (inhalt, kennzahlen)
 
     Hier steckt der ganze Zweck des Skripts: Kontext, Modell, Bedingungen an Lauf
     und Ausgabe an einer Stelle, nachlesbar und aenderbar.
+
+    inhalt ist das geparste Antwortobjekt: {"termine": [...]} und, bei der
+    Variante "reihen", zusaetzlich {"reihen": [...]}. None heisst Fehlschlag --
+    kein Ergebnis, nicht ein leeres. Der Unterschied entscheidet, ob domain_lauf
+    die Domain faellig laesst.
     """
+    auftrag_bauen, schema, _ = VARIANTEN[variante]
     os.makedirs(ARBEITSORDNER, exist_ok=True)
-    befehl = ["claude", "-p", auftrag(heute),
+    befehl = ["claude", "-p", auftrag_bauen(heute),
               "--system-prompt", SYSTEMPROMPT,   # ersetzt den Claude-Code-Prompt
               "--output-format", "json",
-              "--json-schema", SCHEMA,           # erzwingt die Felder
+              "--json-schema", schema,           # erzwingt die Felder
               "--model", modell,
               "--tools", "",                     # keine Werkzeugbeschreibungen
               "--no-session-persistence"]
@@ -846,7 +954,7 @@ def claude_fragen(text, heute, modell="haiku"):
             print(f"FEHLER: Antwort enthaelt kein verwertbares JSON:\n"
                   f"{str(antwort['result'])[:300]}", file=sys.stderr)
             return None, kennzahlen
-    return inhalt.get("termine", []), kennzahlen
+    return inhalt, kennzahlen
 
 
 # --------------------------------------------------------------- Datumsbelege
@@ -1274,6 +1382,55 @@ def nachpruefen(funde, text, heute, verbose=False, seiten=None, ort_pflicht=Fals
     return sorted(gut, key=lambda t: (t["datum"], t["uhrzeit"])), verworfen, belege
 
 
+def pruefe_reihen(reihen, text, verbose=False, seiten=None, ort_pflicht=False):
+    """Titel UND Rhythmus muessen im Text stehen. -> (gute, verworfene)
+
+    Dieselbe Haerte wie nachpruefen(), nur mit einem anderen Anker. Ein Termin
+    haengt an einem Datum, das im Text belegbar ist; eine Reihe hat keins. Ohne
+    Ersatz waere sie unbelegbar, und unbelegte Eintraege sind genau das, wogegen
+    dieses Werkzeug gebaut ist (siehe nachpruefen: neun Vernissagen).
+
+    Der Ersatz ist rhythmus: die Passage, die die Wiederholung benennt, woertlich
+    aus der Seite. Sie wird zweistufig geprueft wie der Titel -- erst genau, dann
+    ohne Anfuehrungszeichen. Steht sie nicht da, hat das Modell die Regel
+    formuliert statt abgeschrieben, und der Eintrag faellt.
+
+    Kein Datumsbeleg, keine belege-Rueckgabe: es gibt nichts zu belegen und
+    nichts, dessen Umfeld man zeigen koennte.
+    """
+    im_text = _normal(text)
+    im_text_blank = _ohne_quotes(im_text)
+    erlaubte_seiten = {a.rstrip("/").lower() for a in (seiten or [])}
+    gut, verworfen = [], []
+    for fund in reihen or []:
+        titel = fund.get("titel") or ""
+        rhythmus = (fund.get("rhythmus") or "").strip()
+        if not titel:
+            verworfen.append((fund, "kein Titel"))
+            continue
+        if not rhythmus:
+            verworfen.append((fund, "kein Rhythmus"))
+            continue
+        if (_normal(titel) not in im_text
+                and _ohne_quotes(_normal(titel)) not in im_text_blank):
+            verworfen.append((fund, "Titel steht nicht im Text"))
+            continue
+        if (_normal(rhythmus) not in im_text
+                and _ohne_quotes(_normal(rhythmus)) not in im_text_blank):
+            verworfen.append((fund, "Rhythmus steht nicht im Text"))
+            continue
+
+        felder, grund = _nebenfelder(fund, im_text, erlaubte_seiten,
+                                     ort_pflicht, verbose)
+        if felder is None:
+            verworfen.append((fund, grund))
+            continue
+
+        gut.append({"rhythmus": rhythmus, "uhrzeit": fund.get("uhrzeit") or "",
+                    "titel": titel, **felder})
+    return sorted(gut, key=lambda r: (r["rhythmus"], r["uhrzeit"])), verworfen
+
+
 # ------------------------------------------------------------------- Darstellen
 
 def als_text(ergebnis, heute):
@@ -1317,11 +1474,28 @@ def als_text(ergebnis, heute):
             zeilen.append(f"      {t['beschreibung']}")
         if t.get("fundstelle"):
             zeilen.append(f"      -> {t['fundstelle']}")
+    # Reihen stehen unter den Terminen, nicht dazwischen: sie haben kein Datum,
+    # nach dem sie sich einsortieren liessen, und ihre Zahl ist klein.
+    if ergebnis.get("reihen"):
+        zeilen.append("")
+        zeilen.append(f"  REGELMAESSIG ({len(ergebnis['reihen'])})")
+        for r in ergebnis["reihen"]:
+            zeile = (f"  {r['rhythmus'][:24]:<24}  {r['uhrzeit'] or '  :  '}  "
+                     f"{r['genre']:<12}  {r['titel'][:44]}")
+            if r.get("kuenstler"):
+                zeile += f"  ~ {r['kuenstler'][:28]}"
+            if r.get("ort"):
+                zeile += f"  @ {r['ort'][:30]}"
+            zeilen.append(zeile)
+            if r.get("beschreibung"):
+                zeilen.append(f"      {r['beschreibung']}")
+            if r.get("fundstelle"):
+                zeilen.append(f"      -> {r['fundstelle']}")
     # Titel NICHT kuerzen: die Verwerfungszeile ist eine Diagnosezeile. Genau der
     # abgeschnittene Teil war zuletzt der, den man zum Vergleich mit dem
     # Seitentext gebraucht haette.
     for fund, grund in ergebnis.get("_verworfen", []):
-        zeilen.append(f"  VERWORFEN  {fund.get('datum', '?')}  "
+        zeilen.append(f"  VERWORFEN  {fund.get('datum') or fund.get('rhythmus') or '?'}  "
                       f"{fund.get('titel')!r}  — {grund}")
     k = ergebnis["tokens"]
     zeilen.append("")
@@ -1393,6 +1567,69 @@ def ausgeben(ergebnis, heute, als_json, ziel_datei):
         print(text)
 
 
+def vergleich_zeigen(text, heute, modell, seiten, ort_pflicht):
+    """Beide Auftragsfassungen auf DENSELBEN Text, Ergebnisse nebeneinander.
+
+    Der Grund, warum die Weiche im Code sitzt und nicht in zwei Git-Staenden:
+    nur so sehen beide Prompts denselben Seitenstand. Sonst enthielte jede
+    Differenz auch die Aenderungen der Website zwischen zwei Laeufen.
+
+    Was ueberdauert: die Schwankung des Modells selbst. Derselbe Text lieferte
+    am 02.09. mal 8, mal 5 uebernommene Termine (siehe nachpruefen). Ein
+    einzelner Durchgang beweist deshalb nichts -- entscheidend ist die Zeile
+    "nur einzeln": Titel, die die Reihen-Fassung als Termin verloren hat. Steht
+    einer davon drueben unter REIHEN, ist genau die Verschiebung passiert, gegen
+    die dieser Vergleich gebaut ist.
+    """
+    ergebnisse = {}
+    for name in VARIANTEN:
+        inhalt, k = claude_fragen(text, heute, modell, name)
+        if inhalt is None:
+            print(f"  {name}: keine Antwort", file=sys.stderr)
+            return
+        gut, verworfen, _ = nachpruefen(inhalt.get("termine", []), text, heute,
+                                        False, seiten, ort_pflicht)
+        reihen, reihen_verworfen = pruefe_reihen(inhalt.get("reihen"), text,
+                                                 False, seiten, ort_pflicht)
+        ergebnisse[name] = (gut, verworfen, reihen, reihen_verworfen, k)
+        print(f"  {name:<8} {len(gut)} Termine, {len(reihen)} Reihen, "
+              f"{len(verworfen) + len(reihen_verworfen)} verworfen, "
+              f"{k.get('kosten', 0.0):.4f} USD", file=sys.stderr)
+
+    a_gut, _, _, _, _ = ergebnisse["einzeln"]
+    n_gut, _, n_reihen, _, _ = ergebnisse["reihen"]
+    a_titel = {t["titel"] for t in a_gut}
+    n_titel = {t["titel"] for t in n_gut}
+    reihen_titel = {r["titel"] for r in n_reihen}
+
+    print("", file=sys.stderr)
+    nur_alt = sorted(a_titel - n_titel)
+    if nur_alt:
+        print(f"  nur einzeln ({len(nur_alt)}) — als Termin verloren:",
+              file=sys.stderr)
+        for titel in nur_alt:
+            wohin = "  >>> steht drueben unter REIHEN" if titel in reihen_titel else ""
+            print(f"    {titel[:70]}{wohin}", file=sys.stderr)
+    else:
+        print("  nur einzeln: keine — kein Termin ist verlorengegangen",
+              file=sys.stderr)
+
+    nur_neu = sorted(n_titel - a_titel)
+    if nur_neu:
+        print(f"  nur reihen ({len(nur_neu)}) — zusaetzlich als Termin:",
+              file=sys.stderr)
+        for titel in nur_neu:
+            print(f"    {titel[:70]}", file=sys.stderr)
+
+    if n_reihen:
+        print(f"\n  REIHEN ({len(n_reihen)}):", file=sys.stderr)
+        for r in n_reihen:
+            print(f"    {r['rhythmus'][:30]:<30} {r['uhrzeit'] or '  :  '}  "
+                  f"{r['titel'][:44]}", file=sys.stderr)
+    else:
+        print("\n  REIHEN: keine", file=sys.stderr)
+
+
 # --------------------------------------------------------------------- Ablauf
 
 def main():
@@ -1420,9 +1657,20 @@ def main():
                           dest="browser_port",
                           help=f"Chrome-Debug-Port fuer Social-Hosts "
                                f"(Vorgabe: {BROWSER_PORT})")
+    zerleger.add_argument("--reihen", action="store_true",
+                          help="regelmaessige Termine ('jeden Dienstag') als "
+                               "zweite Liste mitnehmen. BEFRISTET, siehe "
+                               "VARIANTEN")
+    zerleger.add_argument("--reihen-vergleich", action="store_true",
+                          dest="reihen_vergleich",
+                          help="beide Auftragsfassungen auf DENSELBEN "
+                               "Seitentext ansetzen und die Ergebnisse "
+                               "gegenueberstellen (zwei Modellaufrufe)")
     argumente = zerleger.parse_args()
 
     heute = dt.date.today()
+    variante = "reihen" if (argumente.reihen or argumente.reihen_vergleich) else "einzeln"
+    auftrag_bauen, schema, _ = VARIANTEN[variante]
     ergebnis = {"ziel": argumente.ziel, "quelle": "",
                 "abgerufen": f"{heute:%Y-%m-%d}", "termine": []}
 
@@ -1461,47 +1709,63 @@ def main():
         # Debuggen der Wortlaut-Treue geht, blieb unsichtbar.
         print("=== HINWEG 1/4: system-prompt ===", file=sys.stderr)
         print(SYSTEMPROMPT, file=sys.stderr)
-        print("\n=== HINWEG 2/4: auftrag ===", file=sys.stderr)
-        print(auftrag(heute), file=sys.stderr)
+        print(f"\n=== HINWEG 2/4: auftrag ({variante}) ===", file=sys.stderr)
+        print(auftrag_bauen(heute), file=sys.stderr)
         print("\n=== HINWEG 3/4: json-schema ===", file=sys.stderr)
-        print(json.dumps(json.loads(SCHEMA), ensure_ascii=False, indent=2),
+        print(json.dumps(json.loads(schema), ensure_ascii=False, indent=2),
               file=sys.stderr)
         print(f"\n=== HINWEG 4/4: seitentext ueber stdin ({len(gekappt)} Zeichen) ===",
               file=sys.stderr)
         print(gekappt, file=sys.stderr)
         print("=== Ende HINWEG ===\n", file=sys.stderr)
 
-    funde, k = claude_fragen(gekappt, heute, argumente.modell)
-    if funde is None:
+    if argumente.reihen_vergleich:
+        vergleich_zeigen(gekappt, heute, argumente.modell,
+                         [a for a, _ in gelesen], ist_tour(argumente.ziel))
+        return 0
+
+    inhalt, k = claude_fragen(gekappt, heute, argumente.modell, variante)
+    if inhalt is None:
         return abbrechen("claude lieferte keine Antwort")
+    funde = inhalt.get("termine", [])
 
     if argumente.show_prompt:
         # Die ROHE Modellantwort, vor nachpruefen und ungekuerzt. Nur hier sieht
         # man, was das Modell woertlich als titel/ort/datum geliefert hat -- die
         # Voraussetzung, um Prompt-Fehler von Pruef-Fehlern zu unterscheiden.
+        # BEIDE Listen, sonst bliebe unklar, ob das Modell nichts lieferte oder
+        # die Pruefung zuschlug.
         print(f"=== RUECKWEG: rohe Modellantwort ({len(funde)} Termine, "
-              f"vor nachpruefen) ===", file=sys.stderr)
-        print(json.dumps(funde, ensure_ascii=False, indent=2), file=sys.stderr)
+              f"{len(inhalt.get('reihen') or [])} Reihen, vor nachpruefen) ===",
+              file=sys.stderr)
+        print(json.dumps(inhalt, ensure_ascii=False, indent=2), file=sys.stderr)
         print("=== Ende RUECKWEG ===\n", file=sys.stderr)
 
+    seiten = [a for a, _ in gelesen]
+    ort_pflicht = ist_tour(argumente.ziel)
     gut, verworfen, belege = nachpruefen(funde, gekappt, heute, argumente.verbose,
-                                         seiten=[a for a, _ in gelesen],
-                                         ort_pflicht=ist_tour(argumente.ziel))
+                                         seiten=seiten, ort_pflicht=ort_pflicht)
     if argumente.verbose:
         belege_zeigen(gut, verworfen, belege, gekappt)
         print("", file=sys.stderr)
 
+    gute_reihen, verworfene_reihen = pruefe_reihen(
+        inhalt.get("reihen"), gekappt, argumente.verbose,
+        seiten=seiten, ort_pflicht=ort_pflicht)
+
     ergebnis["termine"] = gut
-    ergebnis["gemeldet"] = len(funde)
-    ergebnis["verworfen"] = len(verworfen)
-    ergebnis["_verworfen"] = verworfen
+    if argumente.reihen:
+        ergebnis["reihen"] = gute_reihen
+    ergebnis["gemeldet"] = len(funde) + len(inhalt.get("reihen") or [])
+    ergebnis["verworfen"] = len(verworfen) + len(verworfene_reihen)
+    ergebnis["_verworfen"] = verworfen + verworfene_reihen
     ergebnis["seiten"] = [{"adresse": a, "zeichen": z} for a, z in gelesen]
     ergebnis["zeichen"] = len(gekappt)
     ergebnis["kosten_usd"] = k.get("kosten", 0.0)
     ergebnis["tokens"] = {"ein": k.get("ein", 0), "aus": k.get("aus", 0)}
 
     ausgeben(ergebnis, heute, argumente.als_json, argumente.out)
-    return 0 if gut else 1
+    return 0 if (gut or gute_reihen) else 1
 
 
 if __name__ == "__main__":
