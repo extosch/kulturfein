@@ -68,7 +68,9 @@ HIER = os.path.dirname(os.path.abspath(__file__))
 PROJEKT = os.path.dirname(HIER)
 
 def _pfade(spur=""):
-    """Namenspraefix -> (domains, domain_log, termine, reihen). Leer = Produktion.
+    """Namenspraefix -> (domains, domain_log, termine, regelmaessige).
+
+    Leer = Produktion.
 
     Ein Testlauf soll den Produktivbestand nicht anfassen: '--spur test' liest
     eingaben/test-domains.md und schreibt ausgaben/test-termine.json sowie
@@ -79,17 +81,17 @@ def _pfade(spur=""):
     naechste Produktivlauf sie ueberspringen -- der echte Bestand veraltete,
     ohne dass es auffaellt.
 
-    reihen entsteht nur mit --reihen; ohne den Schalter wird die Datei nicht
-    angelegt.
+    Die vierte Datei entsteht nur mit --termine-regelmaessig; ohne den
+    Schalter wird sie nicht angelegt.
     """
     p = f"{spur}-" if spur else ""
     return (os.path.join(PROJEKT, "eingaben", f"{p}domains.md"),
             os.path.join(PROJEKT, "ausgaben", f"{p}domain_log.json"),
             os.path.join(PROJEKT, "ausgaben", f"{p}termine.json"),
-            os.path.join(PROJEKT, "ausgaben", f"{p}reihen.json"))
+            os.path.join(PROJEKT, "ausgaben", f"{p}termine_regelmaessig.json"))
 
 
-DOMAINS, DOMAIN_LOG, TERMINE, REIHEN = _pfade()
+DOMAINS, DOMAIN_LOG, TERMINE, TERMINE_REGELMAESSIG = _pfade()
 
 FRISCHE_TAGE = 7        # juenger als das -> beim Sammellauf ueberspringen
 AEHNLICHKEIT = 0.6      # Startwert, nicht gemessen; siehe _aehnlich()
@@ -234,16 +236,18 @@ def verschmelze(bestand, neue, domain, heute):
                                            t.get("domain", "")))
 
 
-def verschmelze_reihen(bestand, neue, domain):
-    """Bestand + frische Reihen einer Domain -> neuer Bestand.
+def verschmelze_termine_regelmaessig(bestand, neue, domain):
+    """Bestand + frische regelmaessige Termine einer Domain -> neuer Bestand.
 
     UMGEKEHRTE REGEL gegenueber verschmelze(). Dort gilt "nicht gefunden heisst
     nicht weg", weil ein Termin ein Datum hat, an dem er von selbst verfaellt.
-    Eine Reihe hat keins. Sie kann nur dadurch enden, dass sie von der Seite
+    Ein regelmaessiger Termin hat keins. Er kann nur dadurch enden, dass er
+    von der Seite
     verschwindet -- bliebe sie trotzdem stehen, stuende der Meditationskreis
     noch Jahre nach seiner letzten Sitzung im Bestand.
 
-    Die Reihen der Domain werden deshalb vollstaendig ERSETZT. Das ist sicher,
+    Die regelmaessigen Termine der Domain werden deshalb vollstaendig
+    ERSETZT. Das ist sicher,
     weil scanne() bei Fehlschlag None liefert und dieser Weg dann gar nicht
     beschritten wird: ein misslungener Abruf loescht nichts.
 
@@ -258,13 +262,16 @@ def verschmelze_reihen(bestand, neue, domain):
 
 # -------------------------------------------------------------------- Lauf
 
-def scanne(domain, heute, modell, variante="einzeln"):
-    """Eine Domain -> (termine, reihen, seiten) oder (None, None, []) bei Misserfolg.
+def scanne(domain, heute, modell, variante="bewaehrt"):
+    """Eine Domain -> (termine, regelmaessige, seiten).
+
+    Bei Misserfolg (None, None, []).
 
     Nutzt termine_aus_domain unveraendert: dieselbe Seitenauswahl, derselbe
     Modellaufruf, dieselbe Belegpruefung wie beim Einzelaufruf.
 
-    reihen ist bei der Variante "einzeln" immer leer -- dort fragt der Auftrag
+    regelmaessige ist bei der Variante "bewaehrt" immer leer -- dort fragt
+    der Auftrag
     gar nicht danach.
     """
     print("  ...ruft Seiten ab")
@@ -290,20 +297,21 @@ def scanne(domain, heute, modell, variante="einzeln"):
     ort_pflicht = tad.ist_tour(domain)
     gut, verworfen, _ = tad.nachpruefen(funde, gekappt, heute,
                                         seiten=seiten, ort_pflicht=ort_pflicht)
-    reihen, reihen_verworfen = tad.pruefe_reihen(inhalt.get("reihen"), gekappt,
+    regelmaessige, regelmaessig_verworfen = tad.pruefe_termine_regelmaessig(
+        inhalt.get("termine_regelmaessig"), gekappt,
                                                  seiten=seiten,
                                                  ort_pflicht=ort_pflicht)
     # Vergangene getrennt ausweisen, sonst steht am Ende '4 uebernommen' neben
     # '1 im Bestand' und niemand weiss, wo die anderen drei geblieben sind.
     vorbei = len([t for t in gut if t.get("datum", "") < heute.isoformat()])
     print(f"  {len(gelesen)} Seite(n), "
-          f"{len(funde) + len(inhalt.get('reihen') or [])} gemeldet, "
+          f"{len(funde) + len(inhalt.get('termine_regelmaessig') or [])} gemeldet, "
           f"{len(gut)} uebernommen"
           + (f" (davon {vorbei} vorbei)" if vorbei else "")
-          + (f", {len(reihen)} regelmaessig" if reihen else "")
-          + f", {len(verworfen) + len(reihen_verworfen)} verworfen, "
+          + (f", {len(regelmaessige)} regelmaessig" if regelmaessige else "")
+          + f", {len(verworfen) + len(regelmaessig_verworfen)} verworfen, "
           f"{kennzahlen.get('kosten', 0.0):.4f} USD")
-    return gut, reihen, seiten
+    return gut, regelmaessige, seiten
 
 
 def main():
@@ -329,16 +337,18 @@ def main():
     zerleger.add_argument("--trocken", action="store_true",
                           help="nur zeigen, was faellig waere; nichts scannen, "
                                "nichts schreiben")
-    zerleger.add_argument("--reihen", action="store_true",
+    zerleger.add_argument("--termine-regelmaessig", action="store_true",
                           help="regelmaessige Termine ('immer dienstags') als "
                                "zweite Liste mitnehmen, nach "
-                               "ausgaben/reihen.json. BEFRISTET, siehe "
+                               "ausgaben/termine_regelmaessig.json. BEFRISTET, siehe "
                                "VARIANTEN in termine_aus_domain")
     argumente = zerleger.parse_args()
 
     heute = dt.date.today()
-    variante = "reihen" if argumente.reihen else "einzeln"
-    domains_datei, domain_log_datei, termine_datei, reihen_datei = _pfade(argumente.spur)
+    variante = ("termine_regelmaessig" if argumente.termine_regelmaessig
+                else "bewaehrt")
+    (domains_datei, domain_log_datei, termine_datei,
+     regelmaessig_datei) = _pfade(argumente.spur)
     if argumente.liste:                  # explizit gesetzt -> gewinnt gegen --spur
         domains_datei = argumente.liste
 
@@ -349,7 +359,8 @@ def main():
 
     log = _lade_json(domain_log_datei, {})
     bestand = _lade_json(termine_datei, [])
-    reihen_bestand = _lade_json(reihen_datei, []) if argumente.reihen else []
+    regelmaessig_bestand = (_lade_json(regelmaessig_datei, [])
+                            if argumente.termine_regelmaessig else [])
 
     faellig = [d for d in domains
                if not ist_frisch(log.get(d), heute, argumente.frische)]
@@ -367,11 +378,13 @@ def main():
     gescannt = 0
     for domain in faellig:
         print(f"{domain}")
-        termine, reihen, seiten = scanne(domain, heute, argumente.modell, variante)
+        termine, regelmaessige, seiten = scanne(domain, heute,
+                                                argumente.modell, variante)
         if termine is not None:
             bestand = verschmelze(bestand, termine, domain, heute)
-            if argumente.reihen:
-                reihen_bestand = verschmelze_reihen(reihen_bestand, reihen, domain)
+            if argumente.termine_regelmaessig:
+                regelmaessig_bestand = verschmelze_termine_regelmaessig(
+                    regelmaessig_bestand, regelmaessige, domain)
             log[domain] = {"seiten": seiten,   # seiten[0] ist die Adresse nach Weiterleitung
                            "besucht": heute.isoformat()}
             gescannt += 1
@@ -381,8 +394,8 @@ def main():
         # der Schreibvorgang ist dann nur redundant, nicht falsch.
         _schreibe_json(domain_log_datei, log)
         _schreibe_json(termine_datei, bestand)
-        if argumente.reihen:
-            _schreibe_json(reihen_datei, reihen_bestand)
+        if argumente.termine_regelmaessig:
+            _schreibe_json(regelmaessig_datei, regelmaessig_bestand)
 
     # Auch ohne einen einzigen Scan aufraeumen: Vergangenes soll verschwinden,
     # sobald jemand den Lauf startet, nicht erst wenn zufaellig eine Domain
@@ -393,14 +406,16 @@ def main():
 
     _schreibe_json(domain_log_datei, log)
     _schreibe_json(termine_datei, bestand)
-    if argumente.reihen:
-        _schreibe_json(reihen_datei, reihen_bestand)
+    if argumente.termine_regelmaessig:
+        _schreibe_json(regelmaessig_datei, regelmaessig_bestand)
 
     print(f"\n{gescannt} gescannt, {len(bestand)} Termine im Bestand"
-          + (f", {len(reihen_bestand)} Reihen" if argumente.reihen else "")
+          + (f", {len(regelmaessig_bestand)} regelmaessige"
+             if argumente.termine_regelmaessig else "")
           + (f", {entfernt} vergangene entfernt" if entfernt else ""))
     print(f"-> {termine_datei}\n-> {domain_log_datei}"
-          + (f"\n-> {reihen_datei}" if argumente.reihen else ""))
+          + (f"\n-> {regelmaessig_datei}"
+             if argumente.termine_regelmaessig else ""))
     return 0
 
 

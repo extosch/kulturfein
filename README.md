@@ -244,7 +244,7 @@ in `_lies()` verloren, aber jeder Seitenabschnitt im Blob trägt schon eine Zeil
 `baue_webseite.py` auf `domain_log.json → seiten[0]` (Domain-Startseite) zurück. Bei
 Instagram ist die `fundstelle` der konkrete `/p/<shortcode>/`-Post.
 
-### Regelmäßige Termine: `--reihen` (befristet parallel)
+### Regelmäßige Termine: `--termine-regelmaessig` (befristet parallel)
 
 Eine Veranstaltung, die „immer dienstags, 18:00 – 19:30 Uhr" stattfindet, hat **kein
 Datum**. Sie fiel bis zum 07.09.2026 doppelt durch: der Prompt verbot sie, und
@@ -261,26 +261,26 @@ Die Abgrenzung ist die heikle Stelle, und sie hat zwei Seiten:
 - **Ausgeschriebene Einzeldaten bleiben Einzeltermine**, auch mehrere für dieselbe
   Veranstaltung. Der „Sonntagskaffee" bei Kloster St. Lioba mit drei genannten Daten wird
   nicht zur Reihe zusammengefasst — das wäre eine Ableitung des Modells, kein Textbeleg.
-- **Öffnungszeiten sind keine Reihe.** Eine Ausstellung, die sonntags geöffnet hat, findet
+- **Öffnungszeiten sind kein regelmäßiger Termin.** Eine Ausstellung, die sonntags geöffnet hat, findet
   nicht sonntags statt. Der Satz steht ausdrücklich im Prompt, und das Verbot, einen
   Zeitraum aufzulösen, bleibt wörtlich erhalten.
 
 **Der Schalter ist befristet.** Der bewährte Prompt bleibt Vorgabe; die neue Fassung hängt
-an `--reihen` (in beiden Skripten). `VARIANTEN` in
+an `--termine-regelmaessig` (in beiden Skripten). `VARIANTEN` in
 [`tools/termine_aus_domain.py`](tools/termine_aus_domain.py) bündelt Auftrag, Schema und
-Reihenprüfung an **einer** Stelle — vier verstreute `if`-Zweige wären vier Orte, an denen
+die zweite Prüfung an **einer** Stelle — vier verstreute `if`-Zweige wären vier Orte, an denen
 alter und neuer Weg unbemerkt auseinanderlaufen. Gegen die Drift der zwei Prompt-Fassungen
 stehen die Feldbeschreibungen als `_FELDER` nur einmal da; `auftrag()` und `SCHEMA` sind
 dadurch **byte-identisch** mit dem Stand davor geblieben, sonst vergliche man nicht die
 Prompt-Differenz, sondern einen Umbau.
 
-`--reihen-vergleich` setzt beide Fassungen auf **denselben** Seitentext an (zwei
+`--vergleich` setzt beide Fassungen auf **denselben** Seitentext an (zwei
 Modellaufrufe, ein Abruf). Genau dafür sitzt die Weiche im Code und nicht in zwei
 Git-Ständen: nur so fällt die Änderung der Website zwischen zwei Läufen als Störgröße weg.
 
 Gemessen am 07.09.2026, je zwei Aufrufe auf identischem Text:
 
-| Domain | einzeln | reihen | Reihen | verschoben |
+| Domain | bewährt | regelmäßig | davon reg. | verschoben |
 |---|---:|---:|---:|---|
 | tibet-kailash-haus.de | 10 | 10 | **8** | – |
 | kloster-st-lioba.de | 48 | 63 | 0 | – |
@@ -292,27 +292,27 @@ Gemessen am 07.09.2026, je zwei Aufrufe auf identischem Text:
 | stiftung-konkrete-kunst.de | 6 | 6 | 0 | – |
 | klavierdepot-freiburg.de | 4 | 4 | 0 | – |
 
-**Kein einziger Termin ist zur Reihe geworden** — die befürchtete Verschiebung, bei der
+**Kein einziger Termin ist zu einem regelmäßigen geworden** — die befürchtete Verschiebung, bei der
 sich die neue Rubrik füllt, während `termine.json` ärmer wird, ist nicht eingetreten. Die
 Differenzen sind durchweg die bekannte Titellängen-Schwankung („Klang der Stille" gegen
 „Klang der Stille Live-Klangreise mit Klangschalen und Bansuri-Flöte").
 
 Die vielen Nullen sind **kein Versagen**: eine Textsuche nach Wiederholungsmustern zeigt,
-dass diese Seiten kaum welche enthalten. Bei `kloster-st-lioba.de` ist die einzige
+dass diese Seiten kaum Wiederholungsregeln enthalten. Bei `kloster-st-lioba.de` ist die einzige
 Fundstelle „Sonntagskaffee" — ein Eigenname, kein Rhythmus.
 
 Die harte Probe steht bei `tibet-kailash-haus.de`, weil dort **beides** vorkommt: „immer
 dienstags, 18:00 – 19:30 Uhr" (echte Reihe) und „Der Tibet-Shop ist montags, mittwochs und
-freitags von 15:00 bis 18:00 Uhr geöffnet" (Öffnungszeit). Die acht gefundenen Reihen sind
+freitags von 15:00 bis 18:00 Uhr geöffnet" (Öffnungszeit). Die acht gefundenen Einträge sind
 Meditationen, Puja und Singkreis; Shop und Garten-Café sind nicht dabei.
 
 Ein Einzellauf beweist dabei nichts: `sternensee-band.de` lieferte im ersten Durchgang 7
-gegen 1 Termin, im zweiten 8 gegen 9. Deshalb vergleicht `--reihen-vergleich` über den
+gegen 1 Termin, im zweiten 8 gegen 9. Deshalb vergleicht `--vergleich` über den
 Schlüssel `(datum, titel)` und nicht über Titel allein — die Band spielt ihr
 „Dreisam-Brücken-Konzert" fünfmal an fünf Daten, als Titelmenge wäre das ein Eintrag.
 
 **Wörtlich abgeschrieben heißt noch nicht „eine Wiederholung".** Der erste Sammellauf über
-die Testfläche lieferte zwei Reihen, und beide waren falsch, obwohl beide Passagen so auf
+die Testfläche lieferte zwei solche Einträge, und beide waren falsch, obwohl beide Passagen so auf
 der Seite standen: `'Ab September'` (ein Startzeitpunkt) und `'Nächste Termin am 08.09.26'`
 (ein Einzeldatum, das als Termin gehört hätte). Die Belegprüfung kann das nicht sehen — sie
 prüft Existenz, nicht Bedeutung.
@@ -321,17 +321,18 @@ Deshalb greift zusätzlich `_ist_rhythmus()`: ein Wochentag oder ein Wiederholun
 vorkommen, ein konkretes Datum nicht. Ein bloßer Wochentag genügt, weil „Dienstag, 20:00 –
 22:00 Uhr" im Programm des Tibet-Kailash-Hauses genau so dasteht und jeden Dienstag meint.
 Dazu nennt der Prompt die Gegenbeispiele ausdrücklich. Nach beiden Änderungen liefert das
-Modell bei Kloster St. Lioba gar keine Reihe mehr, und die acht echten bei
+Modell bei Kloster St. Lioba gar keinen solchen Eintrag mehr, und die acht echten bei
 `tibet-kailash-haus.de` bleiben vollständig erhalten.
 
-Der Sammellauf führt mit `--reihen` einen zweiten Bestand in `ausgaben/reihen.json`.
-`verschmelze_reihen()` dreht die Verfallsregel um: bei Terminen gilt „nicht gefunden heißt
-nicht weg", weil ein Datum von selbst verfällt — eine Reihe hat keins und kann nur dadurch
-enden, dass sie von der Seite verschwindet. Die Reihen einer Domain werden deshalb
+Der Sammellauf führt mit `--termine-regelmaessig` einen zweiten Bestand in
+`ausgaben/termine_regelmaessig.json`.
+`verschmelze_termine_regelmaessig()` dreht die Verfallsregel um: bei Terminen gilt „nicht gefunden heißt
+nicht weg", weil ein Datum von selbst verfällt — ein regelmäßiger Termin hat keins und kann
+nur dadurch enden, dass sie von der Seite verschwindet. Die regelmäßigen Termine einer Domain werden deshalb
 vollständig **ersetzt**. Sicher ist das, weil `scanne()` bei Fehlschlag `None` liefert: ein
 misslungener Abruf löscht nichts.
 
-Noch **nicht** angezeigt — `baue_webseite.py` liest `reihen.json` nicht. Erst sehen, was
+Noch **nicht** angezeigt — `baue_webseite.py` liest `termine_regelmaessig.json` nicht. Erst sehen, was
 hereinkommt, dann über die Darstellung entscheiden.
 
 ### Regionsfilter „Freiburg und Umgebung"

@@ -301,7 +301,8 @@ SYSTEMPROMPT = ("Du liest Text von Veranstalter-Websites und gibst Termine als "
 def _eintrag(anker):
     """Die Felder eines Eintrags. anker ist 'datum' oder 'rhythmus'.
 
-    Termine und Reihen unterscheiden sich nur darin, woran sie haengen; alles
+    Einzelne und regelmaessige unterscheiden sich nur darin, woran sie
+    haengen; alles
     andere ist gleich. Einmal beschrieben, damit die beiden Schemata nicht
     auseinanderlaufen koennen.
     """
@@ -329,13 +330,13 @@ SCHEMA = json.dumps({
 
 # Beide Listen sind Pflicht: ein leeres Array ist eine Aussage ("nichts
 # gefunden"), ein fehlendes Feld nicht.
-SCHEMA_REIHEN = json.dumps({
+SCHEMA_TERMINE_REGELMAESSIG = json.dumps({
     "type": "object",
     "properties": {
         "termine": {"type": "array", "items": _eintrag("datum")},
-        "reihen": {"type": "array", "items": _eintrag("rhythmus")},
+        "termine_regelmaessig": {"type": "array", "items": _eintrag("rhythmus")},
     },
-    "required": ["termine", "reihen"],
+    "required": ["termine", "termine_regelmaessig"],
 }, ensure_ascii=False)
 
 
@@ -430,10 +431,10 @@ _NICHTS_ERFINDEN = (
 )
 
 
-def auftrag_reihen(heute):
-    """Dieselbe Aufgabe, aber mit zwei Listen: Termine und Reihen.
+def auftrag_termine_regelmaessig(heute):
+    """Dieselbe Aufgabe, aber mit zwei Listen: einzelne und regelmaessige Termine.
 
-    BEFRISTET. Steht neben auftrag(), bis gemessen ist, ob die Reihen-Fassung
+    BEFRISTET. Steht neben auftrag(), bis gemessen ist, ob die neue Fassung
     die bewaehrte Ausbeute haelt (siehe VARIANTEN). Dann wird sie die Vorgabe
     und die andere faellt weg.
 
@@ -449,8 +450,9 @@ def auftrag_reihen(heute):
 
     Die heikle Grenze ist die zur Oeffnungszeit. 'Sonntags von 11:30 bis 16:00
     Uhr' war der Ausloeser der neun Geistervernissagen (siehe auftrag) und darf
-    auch als Reihe nicht durchkommen: eine Ausstellung, die sonntags geoeffnet
-    hat, findet nicht sonntags statt. Deshalb steht der Satz ausdruecklich drin,
+    auch als regelmaessiger Termin nicht durchkommen: eine Ausstellung, die
+    sonntags geoeffnet hat, findet nicht sonntags statt. Deshalb steht der
+    Satz ausdruecklich drin,
     und das Verbot, einen Zeitraum aufzuloesen, bleibt woertlich erhalten.
     """
     return (
@@ -459,7 +461,7 @@ def auftrag_reihen(heute):
         "zurueck. Der Text kann mehrere Unterseiten enthalten, jeweils "
         "eingeleitet durch eine Zeile '--- <adresse> ---'.\n\n"
         "Es gibt ZWEI Listen. In termine gehoert, was an einem ausgeschriebenen "
-        "Datum stattfindet. In reihen gehoert, was sich nach einer im Text "
+        "Datum stattfindet. In termine_regelmaessig gehoert, was sich nach einer im Text "
         "genannten Regel wiederholt, ohne dass Einzeldaten dastehen.\n\n"
         "Datum als JJJJ-MM-TT, Uhrzeit als HH:MM (leer lassen, wenn keine "
         "angegeben ist).\n\n"
@@ -468,13 +470,13 @@ def auftrag_reihen(heute):
         "Zeichen abgeschrieben, die sagt, WANN sich die Veranstaltung "
         "wiederholt ('jeden Dienstag', 'Sonntags 10 Uhr', 'jeden ersten Freitag "
         "im Monat'). Setze sie NICHT aus mehreren Textstellen zusammen und "
-        "formuliere sie nicht um. Nur Eintraege in reihen haben einen "
+        "formuliere sie nicht um. Nur Eintraege in termine_regelmaessig haben einen "
         "rhythmus.\n\n"
         "Ein rhythmus muss eine WIEDERHOLUNG benennen. Kein rhythmus sind: ein "
         "Startzeitpunkt ('Ab September'), ein einzelnes Datum ('Naechster "
         "Termin am 08.09.26'), ein Zeitraum ('von Mai bis Juli'). Steht so "
         "etwas da, ist es entweder ein Termin fuer die andere Liste oder gar "
-        "nichts — aber keine Reihe.\n\n"
+        "nichts — aber kein regelmaessiger Termin.\n\n"
         "Jedes zurueckgegebene Datum muss WORTWOERTLICH im Text stehen. Rechne "
         "nichts aus. Ein Zeitraum ('13.09.2026 bis 08.11.2026') ist EINE Angabe "
         "und keine Reihe von Einzelterminen — loese ihn nicht in Wochentage auf. "
@@ -483,27 +485,31 @@ def auftrag_reihen(heute):
         "Stehen Einzeldaten ausgeschrieben da, gehoert jedes davon in termine — "
         "auch wenn es mehrere fuer dieselbe Veranstaltung sind. Nur wenn KEINE "
         "Einzeldaten dastehen, sondern eine Wiederholungsregel, gehoert der "
-        "Eintrag in reihen.\n\n"
-        "Oeffnungszeiten sind KEINE Reihe: eine Ausstellung, die sonntags "
+        "Eintrag in termine_regelmaessig.\n\n"
+        "Oeffnungszeiten sind KEIN regelmaessiger Termin: eine Ausstellung, die sonntags "
         "geoeffnet hat ('Sonntags von 11:30 bis 16:00 Uhr'), findet nicht "
-        "sonntags statt. Eine Reihe ist eine Veranstaltung, die zu einem festen "
+        "sonntags statt. Ein regelmaessiger Termin ist eine Veranstaltung, "
+        "die zu einem festen "
         "Zeitpunkt beginnt.\n\n"
-        + _NICHTS_ERFINDEN + " Dasselbe gilt fuer reihen."
+        + _NICHTS_ERFINDEN + " Dasselbe gilt fuer termine_regelmaessig."
     )
 
 
-# Genau EINE Weiche, nicht vier. Auftrag, Schema und Reihenpruefung gehoeren
+# Genau EINE Weiche, nicht vier. Auftrag, Schema und die zweite Pruefung gehoeren
 # zusammen; verstreute if-Zweige waeren vier Stellen, an denen alter und neuer
 # Weg unbemerkt auseinanderlaufen koennen.
 #
-# BEFRISTET: Zeigen zwei Vergleichslaeufe, dass die Reihen-Fassung keine
-# Einzeltermine in reihen abzieht und die Ausbeute haelt, wird "reihen" die
-# Vorgabe und "einzeln" geloescht -- eine Zeile hier statt einer Suche durch die
-# ganze Datei. Bleibt reihen dauerhaft leer, faellt umgekehrt die neue Fassung
+# BEFRISTET: Zeigen zwei Vergleichslaeufe, dass die neue Fassung keine
+# Einzeltermine in die zweite Liste abzieht und die Ausbeute haelt, wird
+# "termine_regelmaessig" die Vorgabe und "bewaehrt" geloescht -- eine Zeile
+# hier statt einer Suche durch die
+# ganze Datei. Bleibt die zweite Liste dauerhaft leer, faellt umgekehrt die
+# neue Fassung
 # weg. Was nicht passieren darf, ist dass beide stehenbleiben.
 VARIANTEN = {
-    "einzeln": (auftrag,        SCHEMA,        False),
-    "reihen":  (auftrag_reihen, SCHEMA_REIHEN, True),
+    "bewaehrt": (auftrag,        SCHEMA,        False),
+    "termine_regelmaessig": (auftrag_termine_regelmaessig,
+                             SCHEMA_TERMINE_REGELMAESSIG, True),
 }
 
 
@@ -881,14 +887,15 @@ def _fehlergrund(lauf):
     return (lauf.stderr or lauf.stdout or "(keine Meldung)")[:400]
 
 
-def claude_fragen(text, heute, modell="haiku", variante="einzeln"):
+def claude_fragen(text, heute, modell="haiku", variante="bewaehrt"):
     """Der konfektionierte Aufruf. -> (inhalt, kennzahlen)
 
     Hier steckt der ganze Zweck des Skripts: Kontext, Modell, Bedingungen an Lauf
     und Ausgabe an einer Stelle, nachlesbar und aenderbar.
 
     inhalt ist das geparste Antwortobjekt: {"termine": [...]} und, bei der
-    Variante "reihen", zusaetzlich {"reihen": [...]}. None heisst Fehlschlag --
+    Variante "termine_regelmaessig", zusaetzlich die zweite Liste. None
+    heisst Fehlschlag --
     kein Ergebnis, nicht ein leeres. Der Unterschied entscheidet, ob domain_lauf
     die Domain faellig laesst.
     """
@@ -1218,7 +1225,8 @@ def _nebenfelder(fund, im_text, erlaubte_seiten, ort_pflicht, verbose):
     Bei Erfolg (dict, None), bei Regionsverstoss (None, grund) -- der ist der
     einzige Fehlschlag hier, der den ganzen Eintrag verwirft.
 
-    Steht als eigene Funktion da, weil Termine und Reihen sich nur im Anker
+    Steht als eigene Funktion da, weil einzelne und regelmaessige Termine
+    sich nur im Anker
     unterscheiden (Datum dort, Rhythmus hier) und in allem anderen nicht. Zwei
     Kopien dieser sechzig Zeilen wuerden auseinanderlaufen, sobald jemand nur
     eine haertet.
@@ -1419,11 +1427,13 @@ def _ist_rhythmus(rhythmus):
     return True, ""
 
 
-def pruefe_reihen(reihen, text, verbose=False, seiten=None, ort_pflicht=False):
+def pruefe_termine_regelmaessig(regelmaessige, text, verbose=False,
+                                seiten=None, ort_pflicht=False):
     """Titel UND Rhythmus muessen im Text stehen. -> (gute, verworfene)
 
     Dieselbe Haerte wie nachpruefen(), nur mit einem anderen Anker. Ein Termin
-    haengt an einem Datum, das im Text belegbar ist; eine Reihe hat keins. Ohne
+    haengt an einem Datum, das im Text belegbar ist; ein regelmaessiger hat
+    keins. Ohne
     Ersatz waere sie unbelegbar, und unbelegte Eintraege sind genau das, wogegen
     dieses Werkzeug gebaut ist (siehe nachpruefen: neun Vernissagen).
 
@@ -1433,7 +1443,8 @@ def pruefe_reihen(reihen, text, verbose=False, seiten=None, ort_pflicht=False):
     formuliert statt abgeschrieben, und der Eintrag faellt.
 
     Woertlich abgeschrieben heisst aber noch nicht "eine Wiederholung". Der
-    erste Lauf ueber die Testflaeche am 07.09.2026 lieferte zwei Reihen, und
+    erste Lauf ueber die Testflaeche am 07.09.2026 lieferte zwei solche
+    Eintraege, und
     beide waren falsch, obwohl beide Passagen so auf der Seite standen:
     'Ab September' (ein Startzeitpunkt) und 'Naechste Termin am 08.09.26' (ein
     Einzeldatum, das als Termin gehoert haette). Die Belegpruefung kann das
@@ -1451,7 +1462,7 @@ def pruefe_reihen(reihen, text, verbose=False, seiten=None, ort_pflicht=False):
     im_text_blank = _ohne_quotes(im_text)
     erlaubte_seiten = {a.rstrip("/").lower() for a in (seiten or [])}
     gut, verworfen = [], []
-    for fund in reihen or []:
+    for fund in regelmaessige or []:
         titel = fund.get("titel") or ""
         rhythmus = (fund.get("rhythmus") or "").strip()
         if not titel:
@@ -1527,12 +1538,13 @@ def als_text(ergebnis, heute):
             zeilen.append(f"      {t['beschreibung']}")
         if t.get("fundstelle"):
             zeilen.append(f"      -> {t['fundstelle']}")
-    # Reihen stehen unter den Terminen, nicht dazwischen: sie haben kein Datum,
+    # Regelmaessige stehen unter den Terminen, nicht dazwischen: sie haben
+    # kein Datum,
     # nach dem sie sich einsortieren liessen, und ihre Zahl ist klein.
-    if ergebnis.get("reihen"):
+    if ergebnis.get("termine_regelmaessig"):
         zeilen.append("")
-        zeilen.append(f"  REGELMAESSIG ({len(ergebnis['reihen'])})")
-        for r in ergebnis["reihen"]:
+        zeilen.append(f"  REGELMAESSIG ({len(ergebnis['termine_regelmaessig'])})")
+        for r in ergebnis["termine_regelmaessig"]:
             zeile = (f"  {r['rhythmus'][:24]:<24}  {r['uhrzeit'] or '  :  '}  "
                      f"{r['genre']:<12}  {r['titel'][:44]}")
             if r.get("kuenstler"):
@@ -1630,8 +1642,9 @@ def vergleich_zeigen(text, heute, modell, seiten, ort_pflicht):
     Was ueberdauert: die Schwankung des Modells selbst. Derselbe Text lieferte
     am 02.09. mal 8, mal 5 uebernommene Termine (siehe nachpruefen). Ein
     einzelner Durchgang beweist deshalb nichts -- entscheidend ist die Zeile
-    "nur einzeln": Titel, die die Reihen-Fassung als Termin verloren hat. Steht
-    einer davon drueben unter REIHEN, ist genau die Verschiebung passiert, gegen
+    "nur einzeln": Titel, die die neue Fassung als Termin verloren hat. Steht
+    einer davon drueben unter REGELMAESSIG, ist genau die Verschiebung
+    passiert, gegen
     die dieser Vergleich gebaut ist.
     """
     ergebnisse = {}
@@ -1642,22 +1655,23 @@ def vergleich_zeigen(text, heute, modell, seiten, ort_pflicht):
             return
         gut, verworfen, _ = nachpruefen(inhalt.get("termine", []), text, heute,
                                         False, seiten, ort_pflicht)
-        reihen, reihen_verworfen = pruefe_reihen(inhalt.get("reihen"), text,
+        regelmaessige, regelmaessig_verworfen = pruefe_termine_regelmaessig(
+            inhalt.get("termine_regelmaessig"), text,
                                                  False, seiten, ort_pflicht)
-        ergebnisse[name] = (gut, verworfen, reihen, reihen_verworfen, k)
-        print(f"  {name:<8} {len(gut)} Termine, {len(reihen)} Reihen, "
-              f"{len(verworfen) + len(reihen_verworfen)} verworfen, "
+        ergebnisse[name] = (gut, verworfen, regelmaessige, regelmaessig_verworfen, k)
+        print(f"  {name:<8} {len(gut)} Termine, {len(regelmaessige)} regelmaessig, "
+              f"{len(verworfen) + len(regelmaessig_verworfen)} verworfen, "
               f"{k.get('kosten', 0.0):.4f} USD", file=sys.stderr)
 
-    a_gut, _, _, _, _ = ergebnisse["einzeln"]
-    n_gut, _, n_reihen, _, _ = ergebnisse["reihen"]
+    a_gut, _, _, _, _ = ergebnisse["bewaehrt"]
+    n_gut, _, n_regelmaessig, _, _ = ergebnisse["termine_regelmaessig"]
     # Schluessel ist (datum, titel), nicht der Titel allein: die Sternensee-Band
     # spielt ihr "Dreisam-Bruecken-Konzert" fuenfmal an fuenf Daten. Als
     # Titelmenge waere das EIN Eintrag, und der Vergleich meldete Gleichstand,
     # waehrend vier Termine fehlen.
     a_schluessel = {(t["datum"], t["titel"]) for t in a_gut}
     n_schluessel = {(t["datum"], t["titel"]) for t in n_gut}
-    reihen_titel = {r["titel"] for r in n_reihen}
+    regelmaessig_titel = {r["titel"] for r in n_regelmaessig}
 
     print("", file=sys.stderr)
     nur_alt = sorted(a_schluessel - n_schluessel)
@@ -1665,7 +1679,8 @@ def vergleich_zeigen(text, heute, modell, seiten, ort_pflicht):
         print(f"  nur einzeln ({len(nur_alt)}) — als Termin verloren:",
               file=sys.stderr)
         for datum, titel in nur_alt:
-            wohin = "  >>> steht drueben unter REIHEN" if titel in reihen_titel else ""
+            wohin = ("  >>> steht drueben unter REGELMAESSIG"
+                     if titel in regelmaessig_titel else "")
             print(f"    {datum}  {titel[:58]}{wohin}", file=sys.stderr)
     else:
         print("  nur einzeln: keine — kein Termin ist verlorengegangen",
@@ -1673,18 +1688,18 @@ def vergleich_zeigen(text, heute, modell, seiten, ort_pflicht):
 
     nur_neu = sorted(n_schluessel - a_schluessel)
     if nur_neu:
-        print(f"  nur reihen ({len(nur_neu)}) — zusaetzlich als Termin:",
+        print(f"  nur neue Fassung ({len(nur_neu)}) — zusaetzlich als Termin:",
               file=sys.stderr)
         for datum, titel in nur_neu:
             print(f"    {datum}  {titel[:58]}", file=sys.stderr)
 
-    if n_reihen:
-        print(f"\n  REIHEN ({len(n_reihen)}):", file=sys.stderr)
-        for r in n_reihen:
+    if n_regelmaessig:
+        print(f"\n  REGELMAESSIG ({len(n_regelmaessig)}):", file=sys.stderr)
+        for r in n_regelmaessig:
             print(f"    {r['rhythmus'][:30]:<30} {r['uhrzeit'] or '  :  '}  "
                   f"{r['titel'][:44]}", file=sys.stderr)
     else:
-        print("\n  REIHEN: keine", file=sys.stderr)
+        print("\n  REGELMAESSIG: keine", file=sys.stderr)
 
 
 # --------------------------------------------------------------------- Ablauf
@@ -1714,19 +1729,21 @@ def main():
                           dest="browser_port",
                           help=f"Chrome-Debug-Port fuer Social-Hosts "
                                f"(Vorgabe: {BROWSER_PORT})")
-    zerleger.add_argument("--reihen", action="store_true",
+    zerleger.add_argument("--termine-regelmaessig", action="store_true",
                           help="regelmaessige Termine ('jeden Dienstag') als "
                                "zweite Liste mitnehmen. BEFRISTET, siehe "
                                "VARIANTEN")
-    zerleger.add_argument("--reihen-vergleich", action="store_true",
-                          dest="reihen_vergleich",
+    zerleger.add_argument("--vergleich", action="store_true",
+                          dest="vergleich",
                           help="beide Auftragsfassungen auf DENSELBEN "
                                "Seitentext ansetzen und die Ergebnisse "
                                "gegenueberstellen (zwei Modellaufrufe)")
     argumente = zerleger.parse_args()
 
     heute = dt.date.today()
-    variante = "reihen" if (argumente.reihen or argumente.reihen_vergleich) else "einzeln"
+    variante = ("termine_regelmaessig"
+                if (argumente.termine_regelmaessig or argumente.vergleich)
+                else "bewaehrt")
     auftrag_bauen, schema, _ = VARIANTEN[variante]
     ergebnis = {"ziel": argumente.ziel, "quelle": "",
                 "abgerufen": f"{heute:%Y-%m-%d}", "termine": []}
@@ -1776,7 +1793,7 @@ def main():
         print(gekappt, file=sys.stderr)
         print("=== Ende HINWEG ===\n", file=sys.stderr)
 
-    if argumente.reihen_vergleich:
+    if argumente.vergleich:
         vergleich_zeigen(gekappt, heute, argumente.modell,
                          [a for a, _ in gelesen], ist_tour(argumente.ziel))
         return 0
@@ -1793,7 +1810,8 @@ def main():
         # BEIDE Listen, sonst bliebe unklar, ob das Modell nichts lieferte oder
         # die Pruefung zuschlug.
         print(f"=== RUECKWEG: rohe Modellantwort ({len(funde)} Termine, "
-              f"{len(inhalt.get('reihen') or [])} Reihen, vor nachpruefen) ===",
+              f"{len(inhalt.get('termine_regelmaessig') or [])} regelmaessige, "
+              f"vor nachpruefen) ===",
               file=sys.stderr)
         print(json.dumps(inhalt, ensure_ascii=False, indent=2), file=sys.stderr)
         print("=== Ende RUECKWEG ===\n", file=sys.stderr)
@@ -1806,23 +1824,23 @@ def main():
         belege_zeigen(gut, verworfen, belege, gekappt)
         print("", file=sys.stderr)
 
-    gute_reihen, verworfene_reihen = pruefe_reihen(
-        inhalt.get("reihen"), gekappt, argumente.verbose,
+    gute_regelmaessige, verworfene_regelmaessige = pruefe_termine_regelmaessig(
+        inhalt.get("termine_regelmaessig"), gekappt, argumente.verbose,
         seiten=seiten, ort_pflicht=ort_pflicht)
 
     ergebnis["termine"] = gut
-    if argumente.reihen:
-        ergebnis["reihen"] = gute_reihen
-    ergebnis["gemeldet"] = len(funde) + len(inhalt.get("reihen") or [])
-    ergebnis["verworfen"] = len(verworfen) + len(verworfene_reihen)
-    ergebnis["_verworfen"] = verworfen + verworfene_reihen
+    if argumente.termine_regelmaessig:
+        ergebnis["termine_regelmaessig"] = gute_regelmaessige
+    ergebnis["gemeldet"] = len(funde) + len(inhalt.get("termine_regelmaessig") or [])
+    ergebnis["verworfen"] = len(verworfen) + len(verworfene_regelmaessige)
+    ergebnis["_verworfen"] = verworfen + verworfene_regelmaessige
     ergebnis["seiten"] = [{"adresse": a, "zeichen": z} for a, z in gelesen]
     ergebnis["zeichen"] = len(gekappt)
     ergebnis["kosten_usd"] = k.get("kosten", 0.0)
     ergebnis["tokens"] = {"ein": k.get("ein", 0), "aus": k.get("aus", 0)}
 
     ausgeben(ergebnis, heute, argumente.als_json, argumente.out)
-    return 0 if (gut or gute_reihen) else 1
+    return 0 if (gut or gute_regelmaessige) else 1
 
 
 if __name__ == "__main__":
