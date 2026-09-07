@@ -470,6 +470,11 @@ def auftrag_reihen(heute):
         "im Monat'). Setze sie NICHT aus mehreren Textstellen zusammen und "
         "formuliere sie nicht um. Nur Eintraege in reihen haben einen "
         "rhythmus.\n\n"
+        "Ein rhythmus muss eine WIEDERHOLUNG benennen. Kein rhythmus sind: ein "
+        "Startzeitpunkt ('Ab September'), ein einzelnes Datum ('Naechster "
+        "Termin am 08.09.26'), ein Zeitraum ('von Mai bis Juli'). Steht so "
+        "etwas da, ist es entweder ein Termin fuer die andere Liste oder gar "
+        "nichts — aber keine Reihe.\n\n"
         "Jedes zurueckgegebene Datum muss WORTWOERTLICH im Text stehen. Rechne "
         "nichts aus. Ein Zeitraum ('13.09.2026 bis 08.11.2026') ist EINE Angabe "
         "und keine Reihe von Einzelterminen — loese ihn nicht in Wochentage auf. "
@@ -1382,6 +1387,38 @@ def nachpruefen(funde, text, heute, verbose=False, seiten=None, ort_pflicht=Fals
     return sorted(gut, key=lambda t: (t["datum"], t["uhrzeit"])), verworfen, belege
 
 
+# Was einen Rhythmus ausmacht. Ein blosser Wochentag reicht ("Dienstag, 20:00 -
+# 22:00 Uhr" steht so im Programm des Tibet-Kailash-Hauses und meint jeden
+# Dienstag); ein Wiederholungswort reicht auch allein ("14-taegig").
+_WIEDERHOLUNG = re.compile(
+    r"(montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonnabend|sonntag"
+    r"|jede[nrs]?\b|alle\s+\d|woechentlich|wöchentlich|monatlich|jaehrlich"
+    r"|jährlich|taeglich|täglich|14-?taegig|14-?tägig|regelmaessig|regelmäßig"
+    r"|immer\b|stets\b|wochentags|werktags)", re.I)
+
+# Ein konkretes Datum ist das Gegenteil einer Wiederholung. Bewusst enger als
+# datumsfunde(): hier genuegt die Form, es geht nicht um Belegbarkeit.
+_KONKRETES_DATUM = re.compile(
+    r"\d{1,2}\s*\.\s*\d{1,2}\s*\.|\d{1,2}\.\s*(?:Januar|Februar|Maerz|März|April"
+    r"|Mai|Juni|Juli|August|September|Oktober|November|Dezember)|\d{4}-\d{2}-\d{2}",
+    re.I)
+
+
+def _ist_rhythmus(rhythmus):
+    """Nennt diese Passage eine Wiederholung? -> (bool, grund)
+
+    Die Belegpruefung sagt nur, dass der Text auf der Seite steht. Ob er eine
+    WIEDERHOLUNG benennt, ist eine andere Frage, und beide Fehlfunde des ersten
+    Laufs scheiterten genau daran: 'Ab September' und 'Naechste Termin am
+    08.09.26' standen wortgetreu da und waren trotzdem keine Rhythmen.
+    """
+    if _KONKRETES_DATUM.search(rhythmus):
+        return False, f"Rhythmus nennt ein konkretes Datum: {rhythmus!r}"
+    if not _WIEDERHOLUNG.search(rhythmus):
+        return False, f"Rhythmus nennt keine Wiederholung: {rhythmus!r}"
+    return True, ""
+
+
 def pruefe_reihen(reihen, text, verbose=False, seiten=None, ort_pflicht=False):
     """Titel UND Rhythmus muessen im Text stehen. -> (gute, verworfene)
 
@@ -1394,6 +1431,18 @@ def pruefe_reihen(reihen, text, verbose=False, seiten=None, ort_pflicht=False):
     aus der Seite. Sie wird zweistufig geprueft wie der Titel -- erst genau, dann
     ohne Anfuehrungszeichen. Steht sie nicht da, hat das Modell die Regel
     formuliert statt abgeschrieben, und der Eintrag faellt.
+
+    Woertlich abgeschrieben heisst aber noch nicht "eine Wiederholung". Der
+    erste Lauf ueber die Testflaeche am 07.09.2026 lieferte zwei Reihen, und
+    beide waren falsch, obwohl beide Passagen so auf der Seite standen:
+    'Ab September' (ein Startzeitpunkt) und 'Naechste Termin am 08.09.26' (ein
+    Einzeldatum, das als Termin gehoert haette). Die Belegpruefung kann das
+    nicht sehen -- sie prueft Existenz, nicht Bedeutung.
+
+    Deshalb zusaetzlich _ist_rhythmus(): ein Wochentag oder ein Wiederholungswort
+    muss vorkommen, ein konkretes Datum nicht. Das ist dieselbe Bauart wie der
+    Rest des Werkzeugs -- eine lokale Regel gegen das, was das Modell
+    plausibel, aber falsch liefert.
 
     Kein Datumsbeleg, keine belege-Rueckgabe: es gibt nichts zu belegen und
     nichts, dessen Umfeld man zeigen koennte.
@@ -1418,6 +1467,10 @@ def pruefe_reihen(reihen, text, verbose=False, seiten=None, ort_pflicht=False):
         if (_normal(rhythmus) not in im_text
                 and _ohne_quotes(_normal(rhythmus)) not in im_text_blank):
             verworfen.append((fund, "Rhythmus steht nicht im Text"))
+            continue
+        taugt, warum = _ist_rhythmus(rhythmus)
+        if not taugt:
+            verworfen.append((fund, warum))
             continue
 
         felder, grund = _nebenfelder(fund, im_text, erlaubte_seiten,

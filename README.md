@@ -311,6 +311,19 @@ gegen 1 Termin, im zweiten 8 gegen 9. Deshalb vergleicht `--reihen-vergleich` ü
 Schlüssel `(datum, titel)` und nicht über Titel allein — die Band spielt ihr
 „Dreisam-Brücken-Konzert" fünfmal an fünf Daten, als Titelmenge wäre das ein Eintrag.
 
+**Wörtlich abgeschrieben heißt noch nicht „eine Wiederholung".** Der erste Sammellauf über
+die Testfläche lieferte zwei Reihen, und beide waren falsch, obwohl beide Passagen so auf
+der Seite standen: `'Ab September'` (ein Startzeitpunkt) und `'Nächste Termin am 08.09.26'`
+(ein Einzeldatum, das als Termin gehört hätte). Die Belegprüfung kann das nicht sehen — sie
+prüft Existenz, nicht Bedeutung.
+
+Deshalb greift zusätzlich `_ist_rhythmus()`: ein Wochentag oder ein Wiederholungswort muss
+vorkommen, ein konkretes Datum nicht. Ein bloßer Wochentag genügt, weil „Dienstag, 20:00 –
+22:00 Uhr" im Programm des Tibet-Kailash-Hauses genau so dasteht und jeden Dienstag meint.
+Dazu nennt der Prompt die Gegenbeispiele ausdrücklich. Nach beiden Änderungen liefert das
+Modell bei Kloster St. Lioba gar keine Reihe mehr, und die acht echten bei
+`tibet-kailash-haus.de` bleiben vollständig erhalten.
+
 Der Sammellauf führt mit `--reihen` einen zweiten Bestand in `ausgaben/reihen.json`.
 `verschmelze_reihen()` dreht die Verfallsregel um: bei Terminen gilt „nicht gefunden heißt
 nicht weg", weil ein Datum von selbst verfällt — eine Reihe hat keins und kann nur dadurch
