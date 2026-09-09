@@ -244,7 +244,7 @@ in `_lies()` verloren, aber jeder Seitenabschnitt im Blob trägt schon eine Zeil
 `baue_webseite.py` auf `domain_log.json → seiten[0]` (Domain-Startseite) zurück. Bei
 Instagram ist die `fundstelle` der konkrete `/p/<shortcode>/`-Post.
 
-### Regelmäßige Termine: `--termine-regelmaessig` (befristet parallel)
+### Regelmäßige Termine (zweite Liste)
 
 Eine Veranstaltung, die „immer dienstags, 18:00 – 19:30 Uhr" stattfindet, hat **kein
 Datum**. Sie fiel bis zum 07.09.2026 doppelt durch: der Prompt verbot sie, und
@@ -265,22 +265,29 @@ Die Abgrenzung ist die heikle Stelle, und sie hat zwei Seiten:
   nicht sonntags statt. Der Satz steht ausdrücklich im Prompt, und das Verbot, einen
   Zeitraum aufzulösen, bleibt wörtlich erhalten.
 
-**Der Schalter ist befristet.** Der bewährte Prompt bleibt Vorgabe; die neue Fassung hängt
-an `--termine-regelmaessig` (in beiden Skripten). `VARIANTEN` in
-[`tools/termine_aus_domain.py`](tools/termine_aus_domain.py) bündelt Auftrag, Schema und
-die zweite Prüfung an **einer** Stelle — vier verstreute `if`-Zweige wären vier Orte, an denen
-alter und neuer Weg unbemerkt auseinanderlaufen. Gegen die Drift der zwei Prompt-Fassungen
-stehen die Feldbeschreibungen als `_FELDER` nur einmal da; `auftrag()` und `SCHEMA` sind
-dadurch **byte-identisch** mit dem Stand davor geblieben, sonst vergliche man nicht die
-Prompt-Differenz, sondern einen Umbau.
+**Wie das eingeführt wurde — und warum die Weiche wieder weg ist.** Der Prompt war über
+Wochen an Einzelfällen gehärtet; ihn zu ersetzen hätte 100 brauchbare Termine aufs Spiel
+gesetzt. Der gefährlichste Ausgang wäre kein Fehler gewesen, sondern eine Verschiebung: das
+Modell sortiert Termine, die es vorher einzeln lieferte, in die neue Liste — die füllt sich,
+`termine.json` wird ärmer, und das sieht wie Erfolg aus.
 
-`--vergleich` setzt beide Fassungen auf **denselben** Seitentext an (zwei
-Modellaufrufe, ein Abruf). Genau dafür sitzt die Weiche im Code und nicht in zwei
-Git-Ständen: nur so fällt die Änderung der Website zwischen zwei Läufen als Störgröße weg.
+Deshalb liefen vom 07. bis 09.09.2026 **zwei Prompt-Fassungen parallel**, die alte als
+Vorgabe, umschaltbar über `--termine-regelmaessig`. Dazu setzte `--vergleich` beide auf
+**denselben** Seitentext an (zwei Modellaufrufe, ein Abruf) — genau dafür saß die Weiche im
+Code und nicht in zwei Git-Ständen: nur so fällt die Änderung der Website zwischen zwei
+Läufen als Störgröße weg. Solange gemessen wurde, waren `auftrag()` und `SCHEMA` der alten
+Fassung nachweislich **byte-identisch** mit dem Stand davor, sonst hätte man nicht die
+Prompt-Differenz verglichen, sondern einen Umbau.
+
+Nach der Messung ist die alte Fassung **gelöscht** worden, samt `VARIANTEN` und beiden
+Schaltern. Das war von Anfang an so geplant: zwei Prompt-Fassungen driften auseinander,
+sobald jemand nur eine härtet, und dann vergleicht man irgendwann zwei zufällige Stände
+statt alt gegen neu. Der heutige `auftrag()` ist wortgleich mit der gemessenen Fassung — die
+Zahlen unten gelten also unverändert.
 
 Gemessen am 07.09.2026, je zwei Aufrufe auf identischem Text:
 
-| Domain | bewährt | regelmäßig | davon reg. | verschoben |
+| Domain | alte Fassung | neue | davon regelm. | verschoben |
 |---|---:|---:|---:|---|
 | tibet-kailash-haus.de | 10 | 10 | **8** | – |
 | kloster-st-lioba.de | 48 | 63 | 0 | – |
@@ -307,7 +314,7 @@ freitags von 15:00 bis 18:00 Uhr geöffnet" (Öffnungszeit). Die acht gefundenen
 Meditationen, Puja und Singkreis; Shop und Garten-Café sind nicht dabei.
 
 Ein Einzellauf beweist dabei nichts: `sternensee-band.de` lieferte im ersten Durchgang 7
-gegen 1 Termin, im zweiten 8 gegen 9. Deshalb vergleicht `--vergleich` über den
+gegen 1 Termin, im zweiten 8 gegen 9. Deshalb verglich `--vergleich` über den
 Schlüssel `(datum, titel)` und nicht über Titel allein — die Band spielt ihr
 „Dreisam-Brücken-Konzert" fünfmal an fünf Daten, als Titelmenge wäre das ein Eintrag.
 
@@ -324,18 +331,18 @@ Dazu nennt der Prompt die Gegenbeispiele ausdrücklich. Nach beiden Änderungen 
 Modell bei Kloster St. Lioba gar keinen solchen Eintrag mehr, und die acht echten bei
 `tibet-kailash-haus.de` bleiben vollständig erhalten.
 
-**Nach der Umbenennung am 07.09.2026 vollständig nachgemessen**, weil der Auftrag der
+**Nach der Umbenennung vollständig nachgemessen**, weil der Auftrag der
 neuen Fassung das Feld beim Namen nennt und sich dadurch geändert hat. Sammellauf über alle
 acht `test_ok`-Domains: **89 Termine gegen 92 in der Referenz, keine Verschiebung, null
 regelmäßige** — die beiden Fehlfunde des ersten Laufs sind weg, `_ist_rhythmus()` und die
 Gegenbeispiele im Prompt greifen.
 
 Der einzige auffällige Rückgang war `ensemble-recherche.de` (12 → 8). `--vergleich` auf
-identischem Text entlastet den Prompt: dort liefert die neue Fassung **12 Termine gegen 7**
+identischem Text entlastete den Prompt: dort liefert die neue Fassung **12 Termine gegen 7**
 der bewährten. Die Domain schwankt über drei Läufe zwischen 7, 12 und 8 — sie ist der
 bekannte Problemfall mit hoher Verwerfungsrate, unabhängig von dieser Änderung.
 
-Der Sammellauf führt mit `--termine-regelmaessig` einen zweiten Bestand in
+Der Sammellauf führt einen zweiten Bestand in
 `ausgaben/termine_regelmaessig.json`.
 `verschmelze_termine_regelmaessig()` dreht die Verfallsregel um: bei Terminen gilt „nicht gefunden heißt
 nicht weg", weil ein Datum von selbst verfällt — ein regelmäßiger Termin hat keins und kann

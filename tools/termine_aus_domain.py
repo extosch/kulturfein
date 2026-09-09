@@ -322,15 +322,9 @@ def _eintrag(anker):
     }
 
 
-SCHEMA = json.dumps({
-    "type": "object",
-    "properties": {"termine": {"type": "array", "items": _eintrag("datum")}},
-    "required": ["termine"],
-}, ensure_ascii=False)
-
 # Beide Listen sind Pflicht: ein leeres Array ist eine Aussage ("nichts
 # gefunden"), ein fehlendes Feld nicht.
-SCHEMA_TERMINE_REGELMAESSIG = json.dumps({
+SCHEMA = json.dumps({
     "type": "object",
     "properties": {
         "termine": {"type": "array", "items": _eintrag("datum")},
@@ -365,31 +359,44 @@ def auftrag(heute):
     Deshalb drei Verbote statt eines Gebots: nicht zusammensetzen, keinen Namen
     voranstellen, keine Gattung anhaengen. Ein Gebot ("wortgetreu") laesst dem
     Modell die Wahl, WAS es woertlich nimmt; die Verbote nehmen sie ihm.
+
+    Die ZWEITE LISTE kam am 07.09.2026 dazu. Eine regelmaessige Veranstaltung
+    ('immer dienstags, 18:00 - 19:30 Uhr') hat kein Datum; sie fiel vorher
+    doppelt durch -- der Auftrag verbot sie, und nachpruefen() haette sie nicht
+    belegen koennen, weil es nichts zu belegen gibt. Damit fehlten
+    Gottesdienste, Meditationskreise, offene Proben.
+
+    Der Anker wechselt dafuer vom Datum auf die Regel: rhythmus traegt den
+    Wiederholungstext woertlich aus der Seite und wird geprueft wie sonst der
+    Titel. Das Faktenrueckgrat bleibt, nur sein Angelpunkt ist ein anderer.
+
+    Zwei Grenzen mussten dabei ausdruecklich hinein. Die eine zur Oeffnungszeit:
+    'Sonntags von 11:30 bis 16:00 Uhr' war der Ausloeser der neun
+    Geistervernissagen und darf auch als regelmaessiger Termin nicht
+    durchkommen -- eine Ausstellung, die sonntags geoeffnet hat, findet nicht
+    sonntags statt. Die andere gegen Passagen, die zwar woertlich dastehen, aber
+    keine Wiederholung benennen ('Ab September', 'Naechster Termin am
+    08.09.26'); beide kamen im ersten Lauf als Fehlfund. Gegenbeispiele hier,
+    lokale Regel in _ist_rhythmus.
+
+    Bis zum 09.09.2026 stand dieser Auftrag in zwei Fassungen nebeneinander,
+    die alte als Vorgabe, umschaltbar ueber einen Schalter.
+    Das war eine Messvorrichtung, kein Dauerzustand: gemessen ueber neun Domains
+    kam kein einziger Einzeltermin abhanden, und tibet-kailash-haus lieferte acht
+    brauchbare regelmaessige. Danach ist die alte Fassung geloescht worden --
+    zwei Prompt-Fassungen driften auseinander, sobald jemand nur eine haertet.
     """
     return (
         f"Heute ist der {heute:%d.%m.%Y}. Lies den folgenden Text von einer "
         "Veranstalter-Website und gib alle ANGEKUENDIGTEN Veranstaltungen "
         "zurueck. Der Text kann mehrere Unterseiten enthalten, jeweils "
         "eingeleitet durch eine Zeile '--- <adresse> ---'.\n\n"
+        "Es gibt ZWEI Listen. In termine gehoert, was an einem ausgeschriebenen "
+        "Datum stattfindet. In termine_regelmaessig gehoert, was sich nach "
+        "einer im Text genannten Regel wiederholt, ohne dass Einzeldaten "
+        "dastehen.\n\n"
         "Datum als JJJJ-MM-TT, Uhrzeit als HH:MM (leer lassen, wenn keine "
         "angegeben ist).\n\n"
-        + _FELDER +
-        "Jedes zurueckgegebene Datum muss WORTWOERTLICH im Text stehen. Rechne "
-        "nichts aus. Ein Zeitraum ('13.09.2026 bis 08.11.2026') ist EINE Angabe "
-        "und keine Reihe von Einzelterminen — loese ihn nicht in Wochentage auf. "
-        "Wiederkehrende Oeffnungszeiten ('Sonntags von 11:30 bis 16:00 Uhr') "
-        "sind kein Termin. Sind fuer dieselbe Veranstaltung mehrere Daten "
-        "einzeln genannt, gib jedes davon zurueck.\n\n"
-        + _NICHTS_ERFINDEN
-    )
-
-
-# Die Feldbeschreibungen sind in beiden Auftragsfassungen wortgleich, und genau
-# hier droht der Schaden der Doppelung: wer nur eine Kopie haertet, vergleicht
-# spaeter zwei zufaellige Staende statt alt gegen neu. Deshalb stehen sie EINMAL
-# da. Was die Fassungen wirklich unterscheidet -- Kopf, Zeitanker, Schluss --
-# steht bei ihnen und ist damit auf einen Blick zu sehen.
-_FELDER = (
         "titel ist EINE ZUSAMMENHAENGENDE Passage aus dem Text, Zeichen fuer "
         "Zeichen abgeschrieben — mit Anfuehrungszeichen, mit Tippfehlern, ohne "
         "Glaettung. Setze ihn NICHT aus mehreren Textstellen zusammen. Stelle "
@@ -420,58 +427,12 @@ _FELDER = (
         "wortgetreu. Steht der Termin in mehreren Abschnitten, nimm den mit den "
         "meisten Details. Nur eine der '--- <adresse> ---'-Zeilen, nichts "
         "anderes.\n\n"
-)
-
-_NICHTS_ERFINDEN = (
-        "KEINE Veranstaltung sind: Nachrichten und Meldungen, Rueckblicke auf "
-        "Vergangenes, Ausstellungsdauern, Oeffnungszeiten, Jahresarchive "
-        "vergangener Spielzeiten, Pressemitteilungen, Anfahrtshinweise, "
-        "Preisangaben.\n\n"
-        "Erfinde nichts. Steht kein Termin im Text, gib eine leere Liste zurueck."
-)
-
-
-def auftrag_termine_regelmaessig(heute):
-    """Dieselbe Aufgabe, aber mit zwei Listen: einzelne und regelmaessige Termine.
-
-    BEFRISTET. Steht neben auftrag(), bis gemessen ist, ob die neue Fassung
-    die bewaehrte Ausbeute haelt (siehe VARIANTEN). Dann wird sie die Vorgabe
-    und die andere faellt weg.
-
-    Der Grund fuer die zweite Liste: eine regelmaessige Veranstaltung ('jeden
-    Dienstag 20 Uhr') hat kein Datum. Sie faellt heute doppelt durch -- der
-    Prompt verbietet sie, und nachpruefen() koennte sie gar nicht belegen, weil
-    es nichts zu belegen gibt. Damit fehlen Gottesdienste, Meditationskreise,
-    offene Proben.
-
-    Der Anker wechselt deshalb vom Datum auf die Regel: rhythmus traegt den
-    Wiederholungstext woertlich aus der Seite und wird geprueft wie sonst der
-    Titel. Das Faktenrueckgrat bleibt, nur sein Angelpunkt ist ein anderer.
-
-    Die heikle Grenze ist die zur Oeffnungszeit. 'Sonntags von 11:30 bis 16:00
-    Uhr' war der Ausloeser der neun Geistervernissagen (siehe auftrag) und darf
-    auch als regelmaessiger Termin nicht durchkommen: eine Ausstellung, die
-    sonntags geoeffnet hat, findet nicht sonntags statt. Deshalb steht der
-    Satz ausdruecklich drin,
-    und das Verbot, einen Zeitraum aufzuloesen, bleibt woertlich erhalten.
-    """
-    return (
-        f"Heute ist der {heute:%d.%m.%Y}. Lies den folgenden Text von einer "
-        "Veranstalter-Website und gib alle ANGEKUENDIGTEN Veranstaltungen "
-        "zurueck. Der Text kann mehrere Unterseiten enthalten, jeweils "
-        "eingeleitet durch eine Zeile '--- <adresse> ---'.\n\n"
-        "Es gibt ZWEI Listen. In termine gehoert, was an einem ausgeschriebenen "
-        "Datum stattfindet. In termine_regelmaessig gehoert, was sich nach einer im Text "
-        "genannten Regel wiederholt, ohne dass Einzeldaten dastehen.\n\n"
-        "Datum als JJJJ-MM-TT, Uhrzeit als HH:MM (leer lassen, wenn keine "
-        "angegeben ist).\n\n"
-        + _FELDER +
         "rhythmus ist EINE ZUSAMMENHAENGENDE Passage aus dem Text, Zeichen fuer "
         "Zeichen abgeschrieben, die sagt, WANN sich die Veranstaltung "
         "wiederholt ('jeden Dienstag', 'Sonntags 10 Uhr', 'jeden ersten Freitag "
         "im Monat'). Setze sie NICHT aus mehreren Textstellen zusammen und "
-        "formuliere sie nicht um. Nur Eintraege in termine_regelmaessig haben einen "
-        "rhythmus.\n\n"
+        "formuliere sie nicht um. Nur Eintraege in termine_regelmaessig haben "
+        "einen rhythmus.\n\n"
         "Ein rhythmus muss eine WIEDERHOLUNG benennen. Kein rhythmus sind: ein "
         "Startzeitpunkt ('Ab September'), ein einzelnes Datum ('Naechster "
         "Termin am 08.09.26'), ein Zeitraum ('von Mai bis Juli'). Steht so "
@@ -486,31 +447,19 @@ def auftrag_termine_regelmaessig(heute):
         "auch wenn es mehrere fuer dieselbe Veranstaltung sind. Nur wenn KEINE "
         "Einzeldaten dastehen, sondern eine Wiederholungsregel, gehoert der "
         "Eintrag in termine_regelmaessig.\n\n"
-        "Oeffnungszeiten sind KEIN regelmaessiger Termin: eine Ausstellung, die sonntags "
-        "geoeffnet hat ('Sonntags von 11:30 bis 16:00 Uhr'), findet nicht "
-        "sonntags statt. Ein regelmaessiger Termin ist eine Veranstaltung, "
-        "die zu einem festen "
-        "Zeitpunkt beginnt.\n\n"
-        + _NICHTS_ERFINDEN + " Dasselbe gilt fuer termine_regelmaessig."
+        "Oeffnungszeiten sind KEIN regelmaessiger Termin: eine Ausstellung, "
+        "die sonntags geoeffnet hat ('Sonntags von 11:30 bis 16:00 Uhr'), "
+        "findet nicht sonntags statt. Ein regelmaessiger Termin ist eine "
+        "Veranstaltung, die zu einem festen Zeitpunkt beginnt.\n\n"
+        "KEINE Veranstaltung sind: Nachrichten und Meldungen, Rueckblicke auf "
+        "Vergangenes, Ausstellungsdauern, Oeffnungszeiten, Jahresarchive "
+        "vergangener Spielzeiten, Pressemitteilungen, Anfahrtshinweise, "
+        "Preisangaben.\n\n"
+        "Erfinde nichts. Steht kein Termin im Text, gib eine leere Liste "
+        "zurueck. Dasselbe gilt fuer termine_regelmaessig."
     )
 
 
-# Genau EINE Weiche, nicht vier. Auftrag, Schema und die zweite Pruefung gehoeren
-# zusammen; verstreute if-Zweige waeren vier Stellen, an denen alter und neuer
-# Weg unbemerkt auseinanderlaufen koennen.
-#
-# BEFRISTET: Zeigen zwei Vergleichslaeufe, dass die neue Fassung keine
-# Einzeltermine in die zweite Liste abzieht und die Ausbeute haelt, wird
-# "termine_regelmaessig" die Vorgabe und "bewaehrt" geloescht -- eine Zeile
-# hier statt einer Suche durch die
-# ganze Datei. Bleibt die zweite Liste dauerhaft leer, faellt umgekehrt die
-# neue Fassung
-# weg. Was nicht passieren darf, ist dass beide stehenbleiben.
-VARIANTEN = {
-    "bewaehrt": (auftrag,        SCHEMA,        False),
-    "termine_regelmaessig": (auftrag_termine_regelmaessig,
-                             SCHEMA_TERMINE_REGELMAESSIG, True),
-}
 
 
 # ------------------------------------------------------------------ Seiten holen
@@ -887,24 +836,23 @@ def _fehlergrund(lauf):
     return (lauf.stderr or lauf.stdout or "(keine Meldung)")[:400]
 
 
-def claude_fragen(text, heute, modell="haiku", variante="bewaehrt"):
+def claude_fragen(text, heute, modell="haiku"):
     """Der konfektionierte Aufruf. -> (inhalt, kennzahlen)
 
     Hier steckt der ganze Zweck des Skripts: Kontext, Modell, Bedingungen an Lauf
     und Ausgabe an einer Stelle, nachlesbar und aenderbar.
 
     inhalt ist das geparste Antwortobjekt: {"termine": [...]} und, bei der
-    Variante "termine_regelmaessig", zusaetzlich die zweite Liste. None
-    heisst Fehlschlag --
+    inhalt ist das geparste Antwortobjekt mit beiden Listen. None heisst
+    Fehlschlag --
     kein Ergebnis, nicht ein leeres. Der Unterschied entscheidet, ob domain_lauf
     die Domain faellig laesst.
     """
-    auftrag_bauen, schema, _ = VARIANTEN[variante]
     os.makedirs(ARBEITSORDNER, exist_ok=True)
-    befehl = ["claude", "-p", auftrag_bauen(heute),
+    befehl = ["claude", "-p", auftrag(heute),
               "--system-prompt", SYSTEMPROMPT,   # ersetzt den Claude-Code-Prompt
               "--output-format", "json",
-              "--json-schema", schema,           # erzwingt die Felder
+              "--json-schema", SCHEMA,           # erzwingt die Felder
               "--model", modell,
               "--tools", "",                     # keine Werkzeugbeschreibungen
               "--no-session-persistence"]
@@ -1632,76 +1580,6 @@ def ausgeben(ergebnis, heute, als_json, ziel_datei):
         print(text)
 
 
-def vergleich_zeigen(text, heute, modell, seiten, ort_pflicht):
-    """Beide Auftragsfassungen auf DENSELBEN Text, Ergebnisse nebeneinander.
-
-    Der Grund, warum die Weiche im Code sitzt und nicht in zwei Git-Staenden:
-    nur so sehen beide Prompts denselben Seitenstand. Sonst enthielte jede
-    Differenz auch die Aenderungen der Website zwischen zwei Laeufen.
-
-    Was ueberdauert: die Schwankung des Modells selbst. Derselbe Text lieferte
-    am 02.09. mal 8, mal 5 uebernommene Termine (siehe nachpruefen). Ein
-    einzelner Durchgang beweist deshalb nichts -- entscheidend ist die Zeile
-    "nur einzeln": Titel, die die neue Fassung als Termin verloren hat. Steht
-    einer davon drueben unter REGELMAESSIG, ist genau die Verschiebung
-    passiert, gegen
-    die dieser Vergleich gebaut ist.
-    """
-    ergebnisse = {}
-    for name in VARIANTEN:
-        inhalt, k = claude_fragen(text, heute, modell, name)
-        if inhalt is None:
-            print(f"  {name}: keine Antwort", file=sys.stderr)
-            return
-        gut, verworfen, _ = nachpruefen(inhalt.get("termine", []), text, heute,
-                                        False, seiten, ort_pflicht)
-        regelmaessige, regelmaessig_verworfen = pruefe_termine_regelmaessig(
-            inhalt.get("termine_regelmaessig"), text,
-                                                 False, seiten, ort_pflicht)
-        ergebnisse[name] = (gut, verworfen, regelmaessige, regelmaessig_verworfen, k)
-        print(f"  {name:<8} {len(gut)} Termine, {len(regelmaessige)} regelmaessig, "
-              f"{len(verworfen) + len(regelmaessig_verworfen)} verworfen, "
-              f"{k.get('kosten', 0.0):.4f} USD", file=sys.stderr)
-
-    a_gut, _, _, _, _ = ergebnisse["bewaehrt"]
-    n_gut, _, n_regelmaessig, _, _ = ergebnisse["termine_regelmaessig"]
-    # Schluessel ist (datum, titel), nicht der Titel allein: die Sternensee-Band
-    # spielt ihr "Dreisam-Bruecken-Konzert" fuenfmal an fuenf Daten. Als
-    # Titelmenge waere das EIN Eintrag, und der Vergleich meldete Gleichstand,
-    # waehrend vier Termine fehlen.
-    a_schluessel = {(t["datum"], t["titel"]) for t in a_gut}
-    n_schluessel = {(t["datum"], t["titel"]) for t in n_gut}
-    regelmaessig_titel = {r["titel"] for r in n_regelmaessig}
-
-    print("", file=sys.stderr)
-    nur_alt = sorted(a_schluessel - n_schluessel)
-    if nur_alt:
-        print(f"  nur einzeln ({len(nur_alt)}) — als Termin verloren:",
-              file=sys.stderr)
-        for datum, titel in nur_alt:
-            wohin = ("  >>> steht drueben unter REGELMAESSIG"
-                     if titel in regelmaessig_titel else "")
-            print(f"    {datum}  {titel[:58]}{wohin}", file=sys.stderr)
-    else:
-        print("  nur einzeln: keine — kein Termin ist verlorengegangen",
-              file=sys.stderr)
-
-    nur_neu = sorted(n_schluessel - a_schluessel)
-    if nur_neu:
-        print(f"  nur neue Fassung ({len(nur_neu)}) — zusaetzlich als Termin:",
-              file=sys.stderr)
-        for datum, titel in nur_neu:
-            print(f"    {datum}  {titel[:58]}", file=sys.stderr)
-
-    if n_regelmaessig:
-        print(f"\n  REGELMAESSIG ({len(n_regelmaessig)}):", file=sys.stderr)
-        for r in n_regelmaessig:
-            print(f"    {r['rhythmus'][:30]:<30} {r['uhrzeit'] or '  :  '}  "
-                  f"{r['titel'][:44]}", file=sys.stderr)
-    else:
-        print("\n  REGELMAESSIG: keine", file=sys.stderr)
-
-
 # --------------------------------------------------------------------- Ablauf
 
 def main():
@@ -1729,22 +1607,9 @@ def main():
                           dest="browser_port",
                           help=f"Chrome-Debug-Port fuer Social-Hosts "
                                f"(Vorgabe: {BROWSER_PORT})")
-    zerleger.add_argument("--termine-regelmaessig", action="store_true",
-                          help="regelmaessige Termine ('jeden Dienstag') als "
-                               "zweite Liste mitnehmen. BEFRISTET, siehe "
-                               "VARIANTEN")
-    zerleger.add_argument("--vergleich", action="store_true",
-                          dest="vergleich",
-                          help="beide Auftragsfassungen auf DENSELBEN "
-                               "Seitentext ansetzen und die Ergebnisse "
-                               "gegenueberstellen (zwei Modellaufrufe)")
     argumente = zerleger.parse_args()
 
     heute = dt.date.today()
-    variante = ("termine_regelmaessig"
-                if (argumente.termine_regelmaessig or argumente.vergleich)
-                else "bewaehrt")
-    auftrag_bauen, schema, _ = VARIANTEN[variante]
     ergebnis = {"ziel": argumente.ziel, "quelle": "",
                 "abgerufen": f"{heute:%Y-%m-%d}", "termine": []}
 
@@ -1783,22 +1648,17 @@ def main():
         # Debuggen der Wortlaut-Treue geht, blieb unsichtbar.
         print("=== HINWEG 1/4: system-prompt ===", file=sys.stderr)
         print(SYSTEMPROMPT, file=sys.stderr)
-        print(f"\n=== HINWEG 2/4: auftrag ({variante}) ===", file=sys.stderr)
-        print(auftrag_bauen(heute), file=sys.stderr)
+        print("\n=== HINWEG 2/4: auftrag ===", file=sys.stderr)
+        print(auftrag(heute), file=sys.stderr)
         print("\n=== HINWEG 3/4: json-schema ===", file=sys.stderr)
-        print(json.dumps(json.loads(schema), ensure_ascii=False, indent=2),
+        print(json.dumps(json.loads(SCHEMA), ensure_ascii=False, indent=2),
               file=sys.stderr)
         print(f"\n=== HINWEG 4/4: seitentext ueber stdin ({len(gekappt)} Zeichen) ===",
               file=sys.stderr)
         print(gekappt, file=sys.stderr)
         print("=== Ende HINWEG ===\n", file=sys.stderr)
 
-    if argumente.vergleich:
-        vergleich_zeigen(gekappt, heute, argumente.modell,
-                         [a for a, _ in gelesen], ist_tour(argumente.ziel))
-        return 0
-
-    inhalt, k = claude_fragen(gekappt, heute, argumente.modell, variante)
+    inhalt, k = claude_fragen(gekappt, heute, argumente.modell)
     if inhalt is None:
         return abbrechen("claude lieferte keine Antwort")
     funde = inhalt.get("termine", [])
@@ -1829,8 +1689,7 @@ def main():
         seiten=seiten, ort_pflicht=ort_pflicht)
 
     ergebnis["termine"] = gut
-    if argumente.termine_regelmaessig:
-        ergebnis["termine_regelmaessig"] = gute_regelmaessige
+    ergebnis["termine_regelmaessig"] = gute_regelmaessige
     ergebnis["gemeldet"] = len(funde) + len(inhalt.get("termine_regelmaessig") or [])
     ergebnis["verworfen"] = len(verworfen) + len(verworfene_regelmaessige)
     ergebnis["_verworfen"] = verworfen + verworfene_regelmaessige
