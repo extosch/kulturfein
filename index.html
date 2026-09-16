@@ -140,6 +140,44 @@
 
   .masthead .dek strong { color: var(--ink); font-weight: 600; }
 
+  /* ---------- View toggle (Einzeltermine / Regelmaessige Termine) ---------- */
+
+  .view-toggle {
+    display: flex;
+    gap: 0;
+    margin: 1.5rem 0 0;
+    border-bottom: 1px solid var(--paper-line);
+  }
+
+  .view-btn {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 1rem;
+    color: var(--ink-soft);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin: 0 1.5rem -1px 0;
+    padding: 0.5rem 0.1rem;
+    cursor: pointer;
+  }
+
+  .view-btn:hover { color: var(--ink); }
+
+  .view-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+  /* Nur per JS umgeschaltet -- Standardansicht ist Einzeltermine. */
+  #ansicht-regelmaessig { display: none; }
+
+  .entry .rhythmus {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--accent);
+    margin: 0 0 0.3rem;
+  }
+
   /* ---------- Legend ---------- */
 
   .legend {
@@ -374,6 +412,11 @@
     </p>
   </header>
 
+  <div class="view-toggle">
+    <button type="button" class="view-btn active" data-view="einzel">Einzeltermine</button>
+    <button type="button" class="view-btn" data-view="regelmaessig">Regelmäßige Termine</button>
+  </div>
+
   <div class="legend">
     <button type="button" class="legend-item active" data-genre="alle">Alle</button>
     <button type="button" class="legend-item" data-genre="konzert">
@@ -405,199 +448,1161 @@
     </button>
   </div>
 
+  <div id="ansicht-einzel">
 
-  <p id="leer-gefiltert" class="empty-state">Keine Termine für diesen Filter.</p>
+    <p id="leer-gefiltert" class="empty-state">Keine Termine für diesen Filter.</p>
 
-  <section class="day" data-date="2026-09-16" data-today="true">
-    <div class="day-head">
-      <span class="weekday">Mi</span>
-      <span class="date">16.09.2026</span>
-<span class="today-badge">Heute</span>    </div>
+    <section class="day" data-date="2026-09-16" data-today="true">
+      <div class="day-head">
+        <span class="weekday">Mi</span>
+        <span class="date">16.09.2026</span>
+<span class="today-badge">Heute</span>      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">18:00</div>
+          <div>
+            <p class="title">Schlag 6!</p>
+            <p class="sub">Freiburger Barockorchester, Ensemble Recherche — Ensemblehaus Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://mehrklang-freiburg.de/events" target="_blank" rel="noopener"
+                 title="https://mehrklang-freiburg.de/events">mehrklang-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="sonstiges">
+          <div class="time"></div>
+          <div>
+            <p class="title">Lokhalle Feierabend</p>
+            <p class="sub">Kreativpark Lokhalle</p>
+            <p class="desc">Feierabendveranstaltung mit Ping-Pong, Drinks und live elektronische Musik.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
+              <a href="https://gruenhof.org/" target="_blank" rel="noopener"
+                 title="https://gruenhof.org/">gruenhof.org ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-17">
+      <div class="day-head">
+        <span class="weekday">Do</span>
+        <span class="date">17.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="ausstellung">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Vernissage mit Musik aus den 30er und 40er Jahren</p>
+            <p class="sub">Schopf 2</p>
+            <p class="desc">Vernissage zur Ausstellung Gretel Bechtold – Leben und Werk mit historischer Musik.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-ausstellung)"></span>Ausstellung</span>
+              <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-18">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">18.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">11:00</div>
+          <div>
+            <p class="title">Canto - Offenes Liedersingen</p>
+            <p class="sub">Christuskirche Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="vortrag">
+          <div class="time">19:00</div>
+          <div>
+            <p class="title">Mythologie in der TCM: Niere</p>
+            <p class="sub">Harald Pfeffer — Tibet Kailash Haus</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-vortrag)"></span>Vortrag</span>
+              <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
+                 title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="konzert">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">&#34;Brachland&#34; – ein Oratorium</p>
+            <p class="sub">Schopf2</p>
+            <p class="desc">Oratorium als Teil der Ausstellung zu Gretel Bechtold.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="spirituell">
+          <div class="time"></div>
+          <div>
+            <p class="title">Quellenwochen(-ende) Erholung für Geist, Körper und Seele</p>
+            <p class="sub">Kloster St. Lioba, Freiburg-Günterstal</p>
+            <p class="desc">Quellenwochen mit Gesprächsrunden und Impulsen für den Alltag.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
+              <a href="https://kloster-st-lioba.de/veranstaltungen-im-kloster-st-lioba-3" target="_blank" rel="noopener"
+                 title="https://kloster-st-lioba.de/veranstaltungen-im-kloster-st-lioba-3">kloster-st-lioba.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-19">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">19.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">11:30</div>
+          <div>
+            <p class="title">Orgelmusik zur Marktzeit</p>
+            <p class="sub">Patrick Fritz-Benzing — Freiburger Münster</p>
+            <p class="desc">Kurze Orgelmusik zur Marktzeit im Freiburger Münster.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://www.muensterorgelkonzerte.de/aktuelles/kalender" target="_blank" rel="noopener"
+                 title="https://www.muensterorgelkonzerte.de/aktuelles/kalender">muensterorgelkonzerte.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="sonstiges">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Filme zu Gretel Bechtold von Reinhild Dettmer-Finke und Joe Killi</p>
+            <p class="sub">Schopf 2</p>
+            <p class="desc">Filmvorführung im Rahmen der Ausstellung Gretel Bechtold – Leben und Werk.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
+              <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="buehne">
+          <div class="time">20:00</div>
+          <div>
+            <p class="title">PENELOPE KANN WARTEN</p>
+            <p class="sub">Petra Gack — Im alten Klavierdepot Schwarzwaldstraße 7 (Hinterhaus)</p>
+            <p class="desc">Soloschauspiel. Eine Frau wartet 20 Jahre auf ihren Ehegatten.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.petra-gack.de/klavierdepot" target="_blank" rel="noopener"
+                 title="https://www.petra-gack.de/klavierdepot">petra-gack.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-20">
+      <div class="day-head">
+        <span class="weekday">So</span>
+        <span class="date">20.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="lesung">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Lesung zum Buch &#34;genauso konsquent sozialistisch wie national – Alte Kämpferinnen der NSDAP vor 1933&#34; von Katja Kosubek</p>
+            <p class="sub">Katja Kosubek — Schopf2</p>
+            <p class="desc">Szenische Lesung von autobiographischen Essays früher Nationalsozialistinnen mit Analyse von Historikerin Katja Kosubek.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-lesung)"></span>Lesung</span>
+              <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-22">
+      <div class="day-head">
+        <span class="weekday">Di</span>
+        <span class="date">22.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="workshop">
+          <div class="time">18:00</div>
+          <div>
+            <p class="title">Einstiegskurs Meditation mit Wilfried Pfeffer</p>
+            <p class="sub">Wilfried Pfeffer — Tibet Kailash Haus</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
+              <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
+                 title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="konzert">
+          <div class="time">20:15</div>
+          <div>
+            <p class="title">Konzert 14 - Jan Lehtola</p>
+            <p class="sub">Jan Lehtola — Freiburger Münster</p>
+            <p class="desc">Internationales Orgelkonzert im Freiburger Münster.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://www.muensterorgelkonzerte.de/" target="_blank" rel="noopener"
+                 title="https://www.muensterorgelkonzerte.de/">muensterorgelkonzerte.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-24">
+      <div class="day-head">
+        <span class="weekday">Do</span>
+        <span class="date">24.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="sonstiges">
+          <div class="time">20:00</div>
+          <div>
+            <p class="title">Troja: Reich. Sexy. Unbesiegbar.</p>
+            <p class="sub">Schopf2</p>
+            <p class="desc">Storytelling-Reise durch die griechische Mythologie zur Geschichte Trojas.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
+              <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="spirituell">
+          <div class="time">20:00</div>
+          <div>
+            <p class="title">ZUR NACHT im Freiburger Münster</p>
+            <p class="sub">Freiburger Münster</p>
+            <p class="desc">Veranstaltung zum Thema Trösten und Trostfinden im Freiburger Münster.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
+              <a href="https://www.muensterorgelkonzerte.de/" target="_blank" rel="noopener"
+                 title="https://www.muensterorgelkonzerte.de/">muensterorgelkonzerte.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-25">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">25.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Amour &amp; Résistance, Chants du monde</p>
+            <p class="sub">Joanne Calmel — Schopf2</p>
+            <p class="desc">Chanson und Weltmusik mit französischen Chansons, argentinischen Tangos, portugiesischen Fados und Liedern in mehreren Sprachen.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-26">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">26.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">11:30</div>
+          <div>
+            <p class="title">Orgelmusik zur Marktzeit</p>
+            <p class="sub">Hans-Jürgen Kaiser — Freiburger Münster</p>
+            <p class="desc">Kurze Orgelmusik zur Marktzeit im Freiburger Münster.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://www.muensterorgelkonzerte.de/aktuelles/kalender" target="_blank" rel="noopener"
+                 title="https://www.muensterorgelkonzerte.de/aktuelles/kalender">muensterorgelkonzerte.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="tanz">
+          <div class="time"></div>
+          <div>
+            <p class="title">Invisible Flower – Butoh Solo Performance</p>
+            <p class="sub">Lucie Betz, Miku Arizono — Südufer Freiburg</p>
+            <p class="desc">Butoh Solo Performance mit Live-Musik im Rahmen der neuen Open Stage OPST.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-tanz)"></span>Tanz</span>
+              <a href="https://www.instagram.com/p/DbyO4p1CMUt/" target="_blank" rel="noopener"
+                 title="https://www.instagram.com/p/DbyO4p1CMUt/">instagram.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-27">
+      <div class="day-head">
+        <span class="weekday">So</span>
+        <span class="date">27.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="vortrag">
+          <div class="time">11:00</div>
+          <div>
+            <p class="title">Sonntagsmatinee mit Tenzin Lodoe</p>
+            <p class="sub">Tenzin Lodoe — Tibet Kailash Haus</p>
+            <p class="desc">Onlinevortrag zu Buddhismus im 21. Jahrhundert, per Videokonferenz übertragen.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-vortrag)"></span>Vortrag</span>
+              <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
+                 title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-09-29">
+      <div class="day-head">
+        <span class="weekday">Di</span>
+        <span class="date">29.09.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">20:15</div>
+          <div>
+            <p class="title">Konzert 15 - Orgel und Harfe</p>
+            <p class="sub">Stefan Kießling, Jessica Fleming — Freiburger Münster</p>
+            <p class="desc">Internationales Orgelkonzert in der besonderen Kombination mit Harfe im Freiburger Münster.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://www.muensterorgelkonzerte.de/" target="_blank" rel="noopener"
+                 title="https://www.muensterorgelkonzerte.de/">muensterorgelkonzerte.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-01">
+      <div class="day-head">
+        <span class="weekday">Do</span>
+        <span class="date">01.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">20:00</div>
+          <div>
+            <p class="title">Taller Ritmos Latinos &amp; Konzert mit Killari Sur</p>
+            <p class="sub">Killari Sur, Acutún — Schopf2</p>
+            <p class="desc">Abend mit Latin-Rhythmus-Workshop, Live-Musik, Tanzperformances und freiem Tanzen.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-02">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">02.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="sonstiges">
+          <div class="time">17:00</div>
+          <div>
+            <p class="title">WORLD FRAME DRUM DAY</p>
+            <p class="sub">FREIBURG Lokhalle</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
+              <a href="https://www.murat-coskun.eu/on-tour" target="_blank" rel="noopener"
+                 title="https://www.murat-coskun.eu/on-tour">murat-coskun.eu ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-04">
+      <div class="day-head">
+        <span class="weekday">So</span>
+        <span class="date">04.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">11:00</div>
+          <div>
+            <p class="title">Klang der Stille</p>
+            <p class="sub">Yifeng, Shashanka — Tibet Kailash Haus</p>
+            <p class="desc">Live-Klangreise mit Klangschalen und Bansuri-Flöte.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
+                 title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-08">
+      <div class="day-head">
+        <span class="weekday">Do</span>
+        <span class="date">08.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time"></div>
+          <div>
+            <p class="title">A Final Joke</p>
+            <p class="sub">Günter Fortmeier, Lucie Betz — Schopf2 Freiburg</p>
+            <p class="desc">Wiederaufnahme des Theaterstücks. Regie: Raimund Schall und Jürgen Reuß.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.instagram.com/p/Dboh3LFudID/" target="_blank" rel="noopener"
+                 title="https://www.instagram.com/p/Dboh3LFudID/">instagram.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-09">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">09.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="buehne">
+          <div class="time"></div>
+          <div>
+            <p class="title">A Final Joke</p>
+            <p class="sub">Günter Fortmeier, Lucie Betz — Schopf2 Freiburg</p>
+            <p class="desc">Wiederaufnahme des Theaterstücks. Regie: Raimund Schall und Jürgen Reuß.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.instagram.com/p/Dboh3LFudID/" target="_blank" rel="noopener"
+                 title="https://www.instagram.com/p/Dboh3LFudID/">instagram.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-10">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">10.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="buehne">
+          <div class="time"></div>
+          <div>
+            <p class="title">A Final Joke</p>
+            <p class="sub">Günter Fortmeier, Lucie Betz — Schopf2 Freiburg</p>
+            <p class="desc">Wiederaufnahme des Theaterstücks. Regie: Raimund Schall und Jürgen Reuß.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.instagram.com/p/Dboh3LFudID/" target="_blank" rel="noopener"
+                 title="https://www.instagram.com/p/Dboh3LFudID/">instagram.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-13">
+      <div class="day-head">
+        <span class="weekday">Di</span>
+        <span class="date">13.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-14">
+      <div class="day-head">
+        <span class="weekday">Mi</span>
+        <span class="date">14.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-16">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">16.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">11:00</div>
+          <div>
+            <p class="title">Canto - Offenes Liedersingen</p>
+            <p class="sub">Christuskirche Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-17">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">17.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-20">
+      <div class="day-head">
+        <span class="weekday">Di</span>
+        <span class="date">20.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-21">
+      <div class="day-head">
+        <span class="weekday">Mi</span>
+        <span class="date">21.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-23">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">23.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-24">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">24.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">19:00</div>
+          <div>
+            <p class="title">H-Moll-Messe von J. S. Bach</p>
+            <p class="sub">Capella West Freiburg — Ev. Kreuzkirche Stühlinger Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-25">
+      <div class="day-head">
+        <span class="weekday">So</span>
+        <span class="date">25.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">18:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-27">
+      <div class="day-head">
+        <span class="weekday">Di</span>
+        <span class="date">27.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-28">
+      <div class="day-head">
+        <span class="weekday">Mi</span>
+        <span class="date">28.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-30">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">30.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-10-31">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">31.10.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="spirituell">
+          <div class="time">19:00</div>
+          <div>
+            <p class="title">KANTATE in Christus Musikgottesdienst am Reformationstag</p>
+            <p class="sub">Christuskirche Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
+              <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-04">
+      <div class="day-head">
+        <span class="weekday">Mi</span>
+        <span class="date">04.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-05">
+      <div class="day-head">
+        <span class="weekday">Do</span>
+        <span class="date">05.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-06">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">06.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="konzert">
+          <div class="time">20:00</div>
+          <div>
+            <p class="title">Mit dem Kaktus kuscheln – Konzert &amp; Talkshow</p>
+            <p class="sub">Kunstverein Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://mehrklang-freiburg.de/events/kategorie/mehrklang" target="_blank" rel="noopener"
+                 title="https://mehrklang-freiburg.de/events/kategorie/mehrklang">mehrklang-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-07">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">07.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="buehne">
+          <div class="time">19:30</div>
+          <div>
+            <p class="title">Der Zauberberg</p>
+            <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
+            <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
+              <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
+                 title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-08">
+      <div class="day-head">
+        <span class="weekday">So</span>
+        <span class="date">08.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">11:30</div>
+          <div>
+            <p class="title">Nurit Stark, Violine Konzert mit ausgewählten Kompositionen von Carola Bauckholt</p>
+            <p class="sub">Nurit Stark — Ausstellungshalle der Stiftung in Freiburg-Zähringen, Pochgasse 73</p>
+            <p class="desc">Konzert</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://stiftung-konkrete-kunst.de/veranstaltungen/veranstaltungen_2026.html" target="_blank" rel="noopener"
+                 title="https://stiftung-konkrete-kunst.de/veranstaltungen/veranstaltungen_2026.html">stiftung-konkrete-kunst.de ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="sonstiges">
+          <div class="time">18:00</div>
+          <div>
+            <p class="title">Orgelkino - Spione (1928)</p>
+            <p class="sub">Christuskirche Freiburg</p>
+            <p class="desc">Stummfilmklassiker von Fritz Lang mit Live-Soundtrack.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
+              <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-14">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">14.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="workshop">
+          <div class="time"></div>
+          <div>
+            <p class="title">Butoh &amp; Noguchi Taiso Workshop</p>
+            <p class="sub">Imre Thormann — Freiburg</p>
+            <p class="desc">Workshop mit Live-Musik von Elena Ciardella.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
+              <a href="https://www.instagram.com/p/DbWcARcu43L/" target="_blank" rel="noopener"
+                 title="https://www.instagram.com/p/DbWcARcu43L/">instagram.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-15">
+      <div class="day-head">
+        <span class="weekday">So</span>
+        <span class="date">15.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="workshop">
+          <div class="time"></div>
+          <div>
+            <p class="title">Butoh &amp; Noguchi Taiso Workshop</p>
+            <p class="sub">Imre Thormann — Freiburg</p>
+            <p class="desc">Workshop mit Live-Musik von Elena Ciardella.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
+              <a href="https://www.instagram.com/p/DbWcARcu43L/" target="_blank" rel="noopener"
+                 title="https://www.instagram.com/p/DbWcARcu43L/">instagram.com ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-20">
+      <div class="day-head">
+        <span class="weekday">Fr</span>
+        <span class="date">20.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">11:00</div>
+          <div>
+            <p class="title">Canto - Offenes Liedersingen</p>
+            <p class="sub">Christuskirche Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-21">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">21.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="workshop">
+          <div class="time">10:30</div>
+          <div>
+            <p class="title">Einen Moment gestalten – Zugänge zur musikalischen Improvisation</p>
+            <p class="sub">Harald Kimmig — Schopf2</p>
+            <p class="desc">Workshop zur musikalischen Improvisation mit spielerischen Übungen und praktischem Ausprobieren.</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
+              <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-22">
+      <div class="day-head">
+        <span class="weekday">So</span>
+        <span class="date">22.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="spirituell">
+          <div class="time">11:00</div>
+          <div>
+            <p class="title">Musikgottesdienst zum Ewigkeitssonntag</p>
+            <p class="sub">Christuskirche Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
+              <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-28">
+      <div class="day-head">
+        <span class="weekday">Sa</span>
+        <span class="date">28.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">17:00</div>
+          <div>
+            <p class="title">SOULS trifft auf Kammerchor Müllheim</p>
+            <p class="sub">Murat Coşkun, Beatriz Picas, Kammerchor Müllheim — Müllheim Martinskirche</p>
+            <p class="desc">Duo-Konzert mit Kammerchor</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://www.murat-coskun.eu/on-tour" target="_blank" rel="noopener"
+                 title="https://www.murat-coskun.eu/on-tour">murat-coskun.eu ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-11-29">
+      <div class="day-head">
+        <span class="weekday">So</span>
+        <span class="date">29.11.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="workshop">
+          <div class="time">13:00</div>
+          <div>
+            <p class="title">DRUM DAY FREIBURG</p>
+            <p class="sub">Murat Coşkun — Freiburg Jazz- und Rockschule Freiburg</p>
+            <p class="desc">Frame Drum Clinic</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
+              <a href="https://www.murat-coskun.eu/on-tour" target="_blank" rel="noopener"
+                 title="https://www.murat-coskun.eu/on-tour">murat-coskun.eu ↗</a>
+            </div>
+          </div>
+        </article>
+        <article class="entry" data-genre="konzert">
+          <div class="time">17:00</div>
+          <div>
+            <p class="title">SOULS trifft auf Kammerchor Müllheim</p>
+            <p class="sub">Murat Coşkun, Beatriz Picas, Kammerchor Müllheim — Müllheim Martinskirche</p>
+            <p class="desc">Duo-Konzert mit Kammerchor</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://www.murat-coskun.eu/on-tour" target="_blank" rel="noopener"
+                 title="https://www.murat-coskun.eu/on-tour">murat-coskun.eu ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="day" data-date="2026-12-15">
+      <div class="day-head">
+        <span class="weekday">Di</span>
+        <span class="date">15.12.2026</span>
+      </div>
+      <div class="entries">
+        <article class="entry" data-genre="konzert">
+          <div class="time">15:00</div>
+          <div>
+            <p class="title">Canto - Offenes Liedersingen</p>
+            <p class="sub">Christuskirche Freiburg</p>
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+              <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
+                 title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <div id="ansicht-regelmaessig">
+
+    <p id="leer-gefiltert-regelmaessig" class="empty-state">Keine regelmäßigen Termine für diesen Filter.</p>
+
     <div class="entries">
-      <article class="entry" data-genre="konzert">
+      <article class="entry" data-genre="workshop">
         <div class="time">18:00</div>
         <div>
-          <p class="title">Schlag 6!</p>
-          <p class="sub">Freiburger Barockorchester, Ensemble Recherche — Ensemblehaus Freiburg</p>
+          <p class="title">&#34;Buddhst Basics und Meditation&#34; mit Wilfried Pfeffer</p>
+          <p class="rhythmus">Montag, 18:00 – 19:30 Uhr</p>
+          <p class="sub">Wilfried Pfeffer — Tibet Kailash Haus</p>
+          <p class="desc">Methoden zum gewaltfreien Denken, Fühlen und Handeln sowie Tsa Lung Übungen.</p>
           <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://mehrklang-freiburg.de/events" target="_blank" rel="noopener"
-               title="https://mehrklang-freiburg.de/events">mehrklang-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="sonstiges">
-        <div class="time"></div>
-        <div>
-          <p class="title">Lokhalle Feierabend</p>
-          <p class="sub">Kreativpark Lokhalle</p>
-          <p class="desc">Feierabendveranstaltung mit Ping-Pong, Drinks und live elektronische Musik.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
-            <a href="https://gruenhof.org/" target="_blank" rel="noopener"
-               title="https://gruenhof.org/">gruenhof.org ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-17">
-    <div class="day-head">
-      <span class="weekday">Do</span>
-      <span class="date">17.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="ausstellung">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Vernissage mit Musik aus den 30er und 40er Jahren</p>
-          <p class="sub">Schopf 2</p>
-          <p class="desc">Vernissage zur Ausstellung Gretel Bechtold – Leben und Werk mit historischer Musik.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-ausstellung)"></span>Ausstellung</span>
-            <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
-               title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-18">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">18.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">11:00</div>
-        <div>
-          <p class="title">Canto - Offenes Liedersingen</p>
-          <p class="sub">Christuskirche Freiburg</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
-               title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="vortrag">
-        <div class="time">19:00</div>
-        <div>
-          <p class="title">Mythologie in der TCM: Niere</p>
-          <p class="sub">Harald Pfeffer — Tibet Kailash Haus</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-vortrag)"></span>Vortrag</span>
+            <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
             <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
                title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
           </div>
         </div>
       </article>
-      <article class="entry" data-genre="konzert">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">&#34;Brachland&#34; – ein Oratorium</p>
-          <p class="sub">Schopf2</p>
-          <p class="desc">Oratorium als Teil der Ausstellung zu Gretel Bechtold.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
-               title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
       <article class="entry" data-genre="spirituell">
-        <div class="time"></div>
-        <div>
-          <p class="title">Quellenwochen(-ende) Erholung für Geist, Körper und Seele</p>
-          <p class="sub">Kloster St. Lioba, Freiburg-Günterstal</p>
-          <p class="desc">Quellenwochen mit Gesprächsrunden und Impulsen für den Alltag.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
-            <a href="https://kloster-st-lioba.de/veranstaltungen-im-kloster-st-lioba-3" target="_blank" rel="noopener"
-               title="https://kloster-st-lioba.de/veranstaltungen-im-kloster-st-lioba-3">kloster-st-lioba.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-19">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">19.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">11:30</div>
-        <div>
-          <p class="title">Orgelmusik zur Marktzeit</p>
-          <p class="sub">Patrick Fritz-Benzing — Freiburger Münster</p>
-          <p class="desc">Kurze Orgelmusik zur Marktzeit im Freiburger Münster.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://www.muensterorgelkonzerte.de/aktuelles/kalender" target="_blank" rel="noopener"
-               title="https://www.muensterorgelkonzerte.de/aktuelles/kalender">muensterorgelkonzerte.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="sonstiges">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Filme zu Gretel Bechtold von Reinhild Dettmer-Finke und Joe Killi</p>
-          <p class="sub">Schopf 2</p>
-          <p class="desc">Filmvorführung im Rahmen der Ausstellung Gretel Bechtold – Leben und Werk.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
-            <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
-               title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="buehne">
         <div class="time">20:00</div>
         <div>
-          <p class="title">PENELOPE KANN WARTEN</p>
-          <p class="sub">Petra Gack — Im alten Klavierdepot Schwarzwaldstraße 7 (Hinterhaus)</p>
-          <p class="desc">Soloschauspiel. Eine Frau wartet 20 Jahre auf ihren Ehegatten.</p>
+          <p class="title">Stille Achtsamkeits-Medi­ta­tion (Shamata/​Shine) mit Uwe Kuehn</p>
+          <p class="rhythmus">Montag, 20:00 – 21:00 Uhr</p>
+          <p class="sub">Uwe Kuehn — Tibet Kailash Haus</p>
           <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.petra-gack.de/klavierdepot" target="_blank" rel="noopener"
-               title="https://www.petra-gack.de/klavierdepot">petra-gack.de ↗</a>
+            <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
+            <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
+               title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
           </div>
         </div>
       </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-20">
-    <div class="day-head">
-      <span class="weekday">So</span>
-      <span class="date">20.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="lesung">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Lesung zum Buch &#34;genauso konsquent sozialistisch wie national – Alte Kämpferinnen der NSDAP vor 1933&#34; von Katja Kosubek</p>
-          <p class="sub">Katja Kosubek — Schopf2</p>
-          <p class="desc">Szenische Lesung von autobiographischen Essays früher Nationalsozialistinnen mit Analyse von Historikerin Katja Kosubek.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-lesung)"></span>Lesung</span>
-            <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
-               title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-22">
-    <div class="day-head">
-      <span class="weekday">Di</span>
-      <span class="date">22.09.2026</span>
-    </div>
-    <div class="entries">
       <article class="entry" data-genre="workshop">
         <div class="time">18:00</div>
         <div>
           <p class="title">Einstiegskurs Meditation mit Wilfried Pfeffer</p>
+          <p class="rhythmus">immer dienstags, 18:00 – 19:30 Uhr</p>
           <p class="sub">Wilfried Pfeffer — Tibet Kailash Haus</p>
           <div class="meta">
             <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
@@ -607,919 +1612,74 @@
         </div>
       </article>
       <article class="entry" data-genre="konzert">
-        <div class="time">20:15</div>
-        <div>
-          <p class="title">Konzert 14 - Jan Lehtola</p>
-          <p class="sub">Jan Lehtola — Freiburger Münster</p>
-          <p class="desc">Internationales Orgelkonzert im Freiburger Münster.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://www.muensterorgelkonzerte.de/" target="_blank" rel="noopener"
-               title="https://www.muensterorgelkonzerte.de/">muensterorgelkonzerte.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-24">
-    <div class="day-head">
-      <span class="weekday">Do</span>
-      <span class="date">24.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="sonstiges">
         <div class="time">20:00</div>
         <div>
-          <p class="title">Troja: Reich. Sexy. Unbesiegbar.</p>
-          <p class="sub">Schopf2</p>
-          <p class="desc">Storytelling-Reise durch die griechische Mythologie zur Geschichte Trojas.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
-            <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
-               title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="spirituell">
-        <div class="time">20:00</div>
-        <div>
-          <p class="title">ZUR NACHT im Freiburger Münster</p>
-          <p class="sub">Freiburger Münster</p>
-          <p class="desc">Veranstaltung zum Thema Trösten und Trostfinden im Freiburger Münster.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
-            <a href="https://www.muensterorgelkonzerte.de/" target="_blank" rel="noopener"
-               title="https://www.muensterorgelkonzerte.de/">muensterorgelkonzerte.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-25">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">25.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Amour &amp; Résistance, Chants du monde</p>
-          <p class="sub">Joanne Calmel — Schopf2</p>
-          <p class="desc">Chanson und Weltmusik mit französischen Chansons, argentinischen Tangos, portugiesischen Fados und Liedern in mehreren Sprachen.</p>
+          <p class="title">Mantra-Singkreis mit der Musikgruppe Tomas Sky</p>
+          <p class="rhythmus">Dienstag, 20:00 – 22:00 Uhr</p>
+          <p class="sub">Tomas Sky — Tibet Kailash Haus</p>
+          <p class="desc">Offene Gruppe, alle sind willkommen.</p>
           <div class="meta">
             <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
-               title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-26">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">26.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">11:30</div>
-        <div>
-          <p class="title">Orgelmusik zur Marktzeit</p>
-          <p class="sub">Hans-Jürgen Kaiser — Freiburger Münster</p>
-          <p class="desc">Kurze Orgelmusik zur Marktzeit im Freiburger Münster.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://www.muensterorgelkonzerte.de/aktuelles/kalender" target="_blank" rel="noopener"
-               title="https://www.muensterorgelkonzerte.de/aktuelles/kalender">muensterorgelkonzerte.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="tanz">
-        <div class="time"></div>
-        <div>
-          <p class="title">Invisible Flower – Butoh Solo Performance</p>
-          <p class="sub">Lucie Betz, Miku Arizono — Südufer Freiburg</p>
-          <p class="desc">Butoh Solo Performance mit Live-Musik im Rahmen der neuen Open Stage OPST.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-tanz)"></span>Tanz</span>
-            <a href="https://www.instagram.com/p/DbyO4p1CMUt/" target="_blank" rel="noopener"
-               title="https://www.instagram.com/p/DbyO4p1CMUt/">instagram.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-27">
-    <div class="day-head">
-      <span class="weekday">So</span>
-      <span class="date">27.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="vortrag">
-        <div class="time">11:00</div>
-        <div>
-          <p class="title">Sonntagsmatinee mit Tenzin Lodoe</p>
-          <p class="sub">Tenzin Lodoe — Tibet Kailash Haus</p>
-          <p class="desc">Onlinevortrag zu Buddhismus im 21. Jahrhundert, per Videokonferenz übertragen.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-vortrag)"></span>Vortrag</span>
             <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
                title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
           </div>
         </div>
       </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-09-29">
-    <div class="day-head">
-      <span class="weekday">Di</span>
-      <span class="date">29.09.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">20:15</div>
-        <div>
-          <p class="title">Konzert 15 - Orgel und Harfe</p>
-          <p class="sub">Stefan Kießling, Jessica Fleming — Freiburger Münster</p>
-          <p class="desc">Internationales Orgelkonzert in der besonderen Kombination mit Harfe im Freiburger Münster.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://www.muensterorgelkonzerte.de/" target="_blank" rel="noopener"
-               title="https://www.muensterorgelkonzerte.de/">muensterorgelkonzerte.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-01">
-    <div class="day-head">
-      <span class="weekday">Do</span>
-      <span class="date">01.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">20:00</div>
-        <div>
-          <p class="title">Taller Ritmos Latinos &amp; Konzert mit Killari Sur</p>
-          <p class="sub">Killari Sur, Acutún — Schopf2</p>
-          <p class="desc">Abend mit Latin-Rhythmus-Workshop, Live-Musik, Tanzperformances und freiem Tanzen.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
-               title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-02">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">02.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="sonstiges">
+      <article class="entry" data-genre="spirituell">
         <div class="time">17:00</div>
         <div>
-          <p class="title">WORLD FRAME DRUM DAY</p>
-          <p class="sub">FREIBURG Lokhalle</p>
+          <p class="title">Mitgefühls-Meditation und Chenresig-Puja mit Wilfried Pfeffer</p>
+          <p class="rhythmus">Mittwoch, 17:00 – 18:00 Uhr</p>
+          <p class="sub">Wilfried Pfeffer — Tibet Kailash Haus</p>
           <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
-            <a href="https://www.murat-coskun.eu/on-tour" target="_blank" rel="noopener"
-               title="https://www.murat-coskun.eu/on-tour">murat-coskun.eu ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-04">
-    <div class="day-head">
-      <span class="weekday">So</span>
-      <span class="date">04.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">11:00</div>
-        <div>
-          <p class="title">Klang der Stille</p>
-          <p class="sub">Yifeng, Shashanka — Tibet Kailash Haus</p>
-          <p class="desc">Live-Klangreise mit Klangschalen und Bansuri-Flöte.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
+            <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
             <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
                title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
           </div>
         </div>
       </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-08">
-    <div class="day-head">
-      <span class="weekday">Do</span>
-      <span class="date">08.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time"></div>
-        <div>
-          <p class="title">A Final Joke</p>
-          <p class="sub">Günter Fortmeier, Lucie Betz — Schopf2 Freiburg</p>
-          <p class="desc">Wiederaufnahme des Theaterstücks. Regie: Raimund Schall und Jürgen Reuß.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.instagram.com/p/Dboh3LFudID/" target="_blank" rel="noopener"
-               title="https://www.instagram.com/p/Dboh3LFudID/">instagram.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-09">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">09.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="buehne">
-        <div class="time"></div>
-        <div>
-          <p class="title">A Final Joke</p>
-          <p class="sub">Günter Fortmeier, Lucie Betz — Schopf2 Freiburg</p>
-          <p class="desc">Wiederaufnahme des Theaterstücks. Regie: Raimund Schall und Jürgen Reuß.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.instagram.com/p/Dboh3LFudID/" target="_blank" rel="noopener"
-               title="https://www.instagram.com/p/Dboh3LFudID/">instagram.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-10">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">10.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="buehne">
-        <div class="time"></div>
-        <div>
-          <p class="title">A Final Joke</p>
-          <p class="sub">Günter Fortmeier, Lucie Betz — Schopf2 Freiburg</p>
-          <p class="desc">Wiederaufnahme des Theaterstücks. Regie: Raimund Schall und Jürgen Reuß.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.instagram.com/p/Dboh3LFudID/" target="_blank" rel="noopener"
-               title="https://www.instagram.com/p/Dboh3LFudID/">instagram.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-13">
-    <div class="day-head">
-      <span class="weekday">Di</span>
-      <span class="date">13.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-14">
-    <div class="day-head">
-      <span class="weekday">Mi</span>
-      <span class="date">14.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-16">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">16.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">11:00</div>
-        <div>
-          <p class="title">Canto - Offenes Liedersingen</p>
-          <p class="sub">Christuskirche Freiburg</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
-               title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-17">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">17.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-20">
-    <div class="day-head">
-      <span class="weekday">Di</span>
-      <span class="date">20.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-21">
-    <div class="day-head">
-      <span class="weekday">Mi</span>
-      <span class="date">21.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-23">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">23.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-24">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">24.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">19:00</div>
-        <div>
-          <p class="title">H-Moll-Messe von J. S. Bach</p>
-          <p class="sub">Capella West Freiburg — Ev. Kreuzkirche Stühlinger Freiburg</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
-               title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-25">
-    <div class="day-head">
-      <span class="weekday">So</span>
-      <span class="date">25.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">18:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-27">
-    <div class="day-head">
-      <span class="weekday">Di</span>
-      <span class="date">27.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-28">
-    <div class="day-head">
-      <span class="weekday">Mi</span>
-      <span class="date">28.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-30">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">30.10.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-10-31">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">31.10.2026</span>
-    </div>
-    <div class="entries">
       <article class="entry" data-genre="spirituell">
-        <div class="time">19:00</div>
+        <div class="time">10:00</div>
         <div>
-          <p class="title">KANTATE in Christus Musikgottesdienst am Reformationstag</p>
-          <p class="sub">Christuskirche Freiburg</p>
+          <p class="title">&#34;Wir sterben so, wie wir leben&#34;</p>
+          <p class="rhythmus">Donnerstag, 10:00 – 13:00 Uhr</p>
+          <p class="sub">Eva Weißmann, Wilfried Pfeffer — Tibet Kailash Haus</p>
+          <p class="desc">Offener Gesprächskreis über bewusstes Leben, Sterben, Tod und Wiedergeburt.</p>
           <div class="meta">
             <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
-            <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
-               title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
+               title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
           </div>
         </div>
       </article>
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-04">
-    <div class="day-head">
-      <span class="weekday">Mi</span>
-      <span class="date">04.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-05">
-    <div class="day-head">
-      <span class="weekday">Do</span>
-      <span class="date">05.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-06">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">06.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="konzert">
-        <div class="time">20:00</div>
-        <div>
-          <p class="title">Mit dem Kaktus kuscheln – Konzert &amp; Talkshow</p>
-          <p class="sub">Kunstverein Freiburg</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://mehrklang-freiburg.de/events/kategorie/mehrklang" target="_blank" rel="noopener"
-               title="https://mehrklang-freiburg.de/events/kategorie/mehrklang">mehrklang-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-07">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">07.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="buehne">
-        <div class="time">19:30</div>
-        <div>
-          <p class="title">Der Zauberberg</p>
-          <p class="sub">Rathausgasse 5a Freiburg im Breisgau</p>
-          <p class="desc">Schauspielproduktion nach Thomas Mann.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-buehne)"></span>Bühne</span>
-            <a href="https://www.wallgraben-theater.com/spielplan" target="_blank" rel="noopener"
-               title="https://www.wallgraben-theater.com/spielplan">wallgraben-theater.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-08">
-    <div class="day-head">
-      <span class="weekday">So</span>
-      <span class="date">08.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">11:30</div>
-        <div>
-          <p class="title">Nurit Stark, Violine Konzert mit ausgewählten Kompositionen von Carola Bauckholt</p>
-          <p class="sub">Nurit Stark — Ausstellungshalle der Stiftung in Freiburg-Zähringen, Pochgasse 73</p>
-          <p class="desc">Konzert</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://stiftung-konkrete-kunst.de/veranstaltungen/veranstaltungen_2026.html" target="_blank" rel="noopener"
-               title="https://stiftung-konkrete-kunst.de/veranstaltungen/veranstaltungen_2026.html">stiftung-konkrete-kunst.de ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="sonstiges">
+      <article class="entry" data-genre="spirituell">
         <div class="time">18:00</div>
         <div>
-          <p class="title">Orgelkino - Spione (1928)</p>
-          <p class="sub">Christuskirche Freiburg</p>
-          <p class="desc">Stummfilmklassiker von Fritz Lang mit Live-Soundtrack.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-sonstiges)"></span>Sonstiges</span>
-            <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
-               title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-14">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">14.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="workshop">
-        <div class="time"></div>
-        <div>
-          <p class="title">Butoh &amp; Noguchi Taiso Workshop</p>
-          <p class="sub">Imre Thormann — Freiburg</p>
-          <p class="desc">Workshop mit Live-Musik von Elena Ciardella.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
-            <a href="https://www.instagram.com/p/DbWcARcu43L/" target="_blank" rel="noopener"
-               title="https://www.instagram.com/p/DbWcARcu43L/">instagram.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-15">
-    <div class="day-head">
-      <span class="weekday">So</span>
-      <span class="date">15.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="workshop">
-        <div class="time"></div>
-        <div>
-          <p class="title">Butoh &amp; Noguchi Taiso Workshop</p>
-          <p class="sub">Imre Thormann — Freiburg</p>
-          <p class="desc">Workshop mit Live-Musik von Elena Ciardella.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
-            <a href="https://www.instagram.com/p/DbWcARcu43L/" target="_blank" rel="noopener"
-               title="https://www.instagram.com/p/DbWcARcu43L/">instagram.com ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-20">
-    <div class="day-head">
-      <span class="weekday">Fr</span>
-      <span class="date">20.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">11:00</div>
-        <div>
-          <p class="title">Canto - Offenes Liedersingen</p>
-          <p class="sub">Christuskirche Freiburg</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
-               title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-21">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">21.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="workshop">
-        <div class="time">10:30</div>
-        <div>
-          <p class="title">Einen Moment gestalten – Zugänge zur musikalischen Improvisation</p>
-          <p class="sub">Harald Kimmig — Schopf2</p>
-          <p class="desc">Workshop zur musikalischen Improvisation mit spielerischen Übungen und praktischem Ausprobieren.</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
-            <a href="https://kreativpioniere-freiburg.de/" target="_blank" rel="noopener"
-               title="https://kreativpioniere-freiburg.de/">kreativpioniere-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-22">
-    <div class="day-head">
-      <span class="weekday">So</span>
-      <span class="date">22.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="spirituell">
-        <div class="time">11:00</div>
-        <div>
-          <p class="title">Musikgottesdienst zum Ewigkeitssonntag</p>
-          <p class="sub">Christuskirche Freiburg</p>
+          <p class="title">Stille Meditation &#34;nach innen horchen&#34; mit Wilfried Pfeffer</p>
+          <p class="rhythmus">Donnerstag, 18:00 – 19:00 Uhr</p>
+          <p class="sub">Wilfried Pfeffer — Tibet Kailash Haus</p>
           <div class="meta">
             <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
-            <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
-               title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
+            <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
+               title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
           </div>
         </div>
       </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-11-28">
-    <div class="day-head">
-      <span class="weekday">Sa</span>
-      <span class="date">28.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">17:00</div>
+      <article class="entry" data-genre="spirituell">
+        <div class="time">18:00</div>
         <div>
-          <p class="title">SOULS trifft auf Kammerchor Müllheim</p>
-          <p class="sub">Murat Coşkun, Beatriz Picas, Kammerchor Müllheim — Müllheim Martinskirche</p>
-          <p class="desc">Duo-Konzert mit Kammerchor</p>
+          <p class="title">Tara Healing Meditation mit Preba Pather</p>
+          <p class="rhythmus">Freitag, 18:00 – 19:00 Uhr</p>
+          <p class="sub">Preba Pather — Tibet Kailash Haus</p>
           <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://www.murat-coskun.eu/on-tour" target="_blank" rel="noopener"
-               title="https://www.murat-coskun.eu/on-tour">murat-coskun.eu ↗</a>
+            <span class="tag"><span class="dot" style="background:var(--genre-spirituell)"></span>Spirituell</span>
+            <a href="https://tibet-kailash-haus.de/veranstaltungen" target="_blank" rel="noopener"
+               title="https://tibet-kailash-haus.de/veranstaltungen">tibet-kailash-haus.de ↗</a>
           </div>
         </div>
       </article>
     </div>
-  </section>
-  <section class="day" data-date="2026-11-29">
-    <div class="day-head">
-      <span class="weekday">So</span>
-      <span class="date">29.11.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="workshop">
-        <div class="time">13:00</div>
-        <div>
-          <p class="title">DRUM DAY FREIBURG</p>
-          <p class="sub">Murat Coşkun — Freiburg Jazz- und Rockschule Freiburg</p>
-          <p class="desc">Frame Drum Clinic</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-workshop)"></span>Workshop</span>
-            <a href="https://www.murat-coskun.eu/on-tour" target="_blank" rel="noopener"
-               title="https://www.murat-coskun.eu/on-tour">murat-coskun.eu ↗</a>
-          </div>
-        </div>
-      </article>
-      <article class="entry" data-genre="konzert">
-        <div class="time">17:00</div>
-        <div>
-          <p class="title">SOULS trifft auf Kammerchor Müllheim</p>
-          <p class="sub">Murat Coşkun, Beatriz Picas, Kammerchor Müllheim — Müllheim Martinskirche</p>
-          <p class="desc">Duo-Konzert mit Kammerchor</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://www.murat-coskun.eu/on-tour" target="_blank" rel="noopener"
-               title="https://www.murat-coskun.eu/on-tour">murat-coskun.eu ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
-  <section class="day" data-date="2026-12-15">
-    <div class="day-head">
-      <span class="weekday">Di</span>
-      <span class="date">15.12.2026</span>
-    </div>
-    <div class="entries">
-      <article class="entry" data-genre="konzert">
-        <div class="time">15:00</div>
-        <div>
-          <p class="title">Canto - Offenes Liedersingen</p>
-          <p class="sub">Christuskirche Freiburg</p>
-          <div class="meta">
-            <span class="tag"><span class="dot" style="background:var(--genre-konzert)"></span>Konzert</span>
-            <a href="https://stadtkantorat-freiburg.de/" target="_blank" rel="noopener"
-               title="https://stadtkantorat-freiburg.de/">stadtkantorat-freiburg.de ↗</a>
-          </div>
-        </div>
-      </article>
-    </div>
-  </section>
+  </div>
 
   <footer class="foot">
     <h2>Methodik &amp; Grenzen</h2>
@@ -1580,24 +1740,34 @@
     return d.getFullYear() + "-" + mm + "-" + dd;
   }
 
-  function aktualisiere() {
-    var heute = heuteIso();
+  function aktivesGenre() {
     var aktiv = document.querySelector(".legend-item.active");
-    var aktivesGenre = aktiv ? aktiv.dataset.genre : "alle";
+    return aktiv ? aktiv.dataset.genre : "alle";
+  }
+
+  // Reine Genre-Sichtbarkeit auf einer Liste von .entry-Elementen -- von
+  // beiden Ansichten geteilt, damit der Legend-Filter in beiden gleich wirkt.
+  function filtereEintraege(eintraege, genre) {
+    var sichtbar = 0;
+    eintraege.forEach(function (eintrag) {
+      var passt = genre === "alle" || eintrag.dataset.genre === genre;
+      eintrag.style.display = passt ? "" : "none";
+      if (passt) sichtbar++;
+    });
+    return sichtbar;
+  }
+
+  function aktualisiereEinzel() {
+    var heute = heuteIso();
+    var genre = aktivesGenre();
     // Getrennt von 'zeigen': Heute zaehlt als sichtbarer TAG auch leer, aber
     // nicht als sichtbarer TERMIN -- sonst zeigt der Leer-Hinweis nie mehr an,
     // dass ein Genre-Filter ueberall sonst nichts trifft.
     var sichtbareEintraegeGesamt = 0;
 
-    document.querySelectorAll(".day").forEach(function (tag) {
+    document.querySelectorAll("#ansicht-einzel .day").forEach(function (tag) {
       var istVergangen = tag.dataset.date < heute;
-      var sichtbareEintraege = 0;
-
-      tag.querySelectorAll(".entry").forEach(function (eintrag) {
-        var passt = aktivesGenre === "alle" || eintrag.dataset.genre === aktivesGenre;
-        eintrag.style.display = passt ? "" : "none";
-        if (passt) sichtbareEintraege++;
-      });
+      var sichtbareEintraege = filtereEintraege(tag.querySelectorAll(".entry"), genre);
 
       var istHeute = tag.dataset.date === heute;
       tag.classList.toggle("today-live", istHeute);
@@ -1615,6 +1785,21 @@
     if (hinweis) hinweis.style.display = sichtbareEintraegeGesamt ? "none" : "block";
   }
 
+  function aktualisiereRegelmaessig() {
+    var sichtbar = filtereEintraege(
+      document.querySelectorAll("#ansicht-regelmaessig .entry"), aktivesGenre());
+    var hinweis = document.getElementById("leer-gefiltert-regelmaessig");
+    if (hinweis) hinweis.style.display = sichtbar ? "none" : "block";
+  }
+
+  // Haelt beide Ansichten aktuell, unabhaengig davon, welche gerade sichtbar
+  // ist -- so bleibt der Genre-Filter beim Umschalten des Tabs konsistent,
+  // ohne dass der Tab-Wechsel selbst neu filtern muesste.
+  function aktualisiere() {
+    aktualisiereEinzel();
+    aktualisiereRegelmaessig();
+  }
+
   document.querySelectorAll(".legend-item").forEach(function (btn) {
     btn.addEventListener("click", function () {
       document.querySelectorAll(".legend-item").forEach(function (b) {
@@ -1622,6 +1807,21 @@
       });
       btn.classList.add("active");
       aktualisiere();
+    });
+  });
+
+  document.querySelectorAll(".view-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".view-btn").forEach(function (b) {
+        b.classList.remove("active");
+      });
+      btn.classList.add("active");
+      var regelmaessig = btn.dataset.view === "regelmaessig";
+      // Explizit "block", nicht "" -- #ansicht-regelmaessig hat display:none
+      // als Stylesheet-Regel (s.o.), "" wuerde nur das Inline-Style loeschen
+      // und diese Regel wieder greifen lassen, nicht zum Anzeigen zwingen.
+      document.getElementById("ansicht-einzel").style.display = regelmaessig ? "none" : "block";
+      document.getElementById("ansicht-regelmaessig").style.display = regelmaessig ? "block" : "none";
     });
   });
 

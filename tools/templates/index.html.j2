@@ -140,6 +140,44 @@
 
   .masthead .dek strong { color: var(--ink); font-weight: 600; }
 
+  /* ---------- View toggle (Einzeltermine / Regelmaessige Termine) ---------- */
+
+  .view-toggle {
+    display: flex;
+    gap: 0;
+    margin: 1.5rem 0 0;
+    border-bottom: 1px solid var(--paper-line);
+  }
+
+  .view-btn {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 1rem;
+    color: var(--ink-soft);
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin: 0 1.5rem -1px 0;
+    padding: 0.5rem 0.1rem;
+    cursor: pointer;
+  }
+
+  .view-btn:hover { color: var(--ink); }
+
+  .view-btn.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+  /* Nur per JS umgeschaltet -- Standardansicht ist Einzeltermine. */
+  #ansicht-regelmaessig { display: none; }
+
+  .entry .rhythmus {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--accent);
+    margin: 0 0 0.3rem;
+  }
+
   /* ---------- Legend ---------- */
 
   .legend {
@@ -379,6 +417,11 @@
     </p>
   </header>
 
+  <div class="view-toggle">
+    <button type="button" class="view-btn active" data-view="einzel">Einzeltermine</button>
+    <button type="button" class="view-btn" data-view="regelmaessig">Regelmäßige Termine</button>
+  </div>
+
   <div class="legend">
     <button type="button" class="legend-item active" data-genre="alle">Alle</button>
     {% for genre in genres %}
@@ -388,25 +431,64 @@
     {% endfor %}
   </div>
 
-  {% if is_empty %}
-  <div class="empty-state">Noch keine Termine im Bestand.</div>
-  {% endif %}
+  <div id="ansicht-einzel">
+    {% if is_empty %}
+    <div class="empty-state">Noch keine Termine im Bestand.</div>
+    {% endif %}
 
-  <p id="leer-gefiltert" class="empty-state">Keine Termine für diesen Filter.</p>
+    <p id="leer-gefiltert" class="empty-state">Keine Termine für diesen Filter.</p>
 
-  {% for day in days %}
-  <section class="day" data-date="{{ day.date }}"{% if day.is_today %} data-today="true"{% endif %}>
-    <div class="day-head">
-      <span class="weekday">{{ day.weekday }}</span>
-      <span class="date">{{ day.date_anzeige }}</span>
-      {% if day.is_today %}<span class="today-badge">Heute</span>{% endif %}
-    </div>
+    {% for day in days %}
+    <section class="day" data-date="{{ day.date }}"{% if day.is_today %} data-today="true"{% endif %}>
+      <div class="day-head">
+        <span class="weekday">{{ day.weekday }}</span>
+        <span class="date">{{ day.date_anzeige }}</span>
+        {% if day.is_today %}<span class="today-badge">Heute</span>{% endif %}
+      </div>
+      <div class="entries">
+        {% for entry in day.entries %}
+        <article class="entry" data-genre="{{ entry.genre_slug }}">
+          <div class="time">{{ entry.uhrzeit or "" }}</div>
+          <div>
+            <p class="title">{{ entry.titel }}</p>
+            {% if entry.kuenstler or entry.ort %}
+            <p class="sub">{{ [entry.kuenstler, entry.ort] | select | join(" — ") }}</p>
+            {% endif %}
+            {% if entry.beschreibung %}
+            <p class="desc">{{ entry.beschreibung }}</p>
+            {% endif %}
+            <div class="meta">
+              <span class="tag"><span class="dot" style="background:var({{ entry.genre_farbe }})"></span>{{ entry.genre }}</span>
+              {% if entry.link %}
+              <a href="{{ entry.link }}" target="_blank" rel="noopener"
+                 title="{{ entry.link }}">{{ entry.link_label }} ↗</a>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+        {% if day.is_today and not day.entries %}
+        <p style="color:var(--ink-faint); font-size:0.9rem;">Für heute noch keine Termine erfasst.</p>
+        {% endif %}
+      </div>
+    </section>
+    {% endfor %}
+  </div>
+
+  <div id="ansicht-regelmaessig">
+    {% if regelmaessig_is_empty %}
+    <div class="empty-state">Noch keine regelmäßigen Termine im Bestand.</div>
+    {% endif %}
+
+    <p id="leer-gefiltert-regelmaessig" class="empty-state">Keine regelmäßigen Termine für diesen Filter.</p>
+
     <div class="entries">
-      {% for entry in day.entries %}
+      {% for entry in regelmaessig_entries %}
       <article class="entry" data-genre="{{ entry.genre_slug }}">
         <div class="time">{{ entry.uhrzeit or "" }}</div>
         <div>
           <p class="title">{{ entry.titel }}</p>
+          <p class="rhythmus">{{ entry.rhythmus }}</p>
           {% if entry.kuenstler or entry.ort %}
           <p class="sub">{{ [entry.kuenstler, entry.ort] | select | join(" — ") }}</p>
           {% endif %}
@@ -423,12 +505,8 @@
         </div>
       </article>
       {% endfor %}
-      {% if day.is_today and not day.entries %}
-      <p style="color:var(--ink-faint); font-size:0.9rem;">Für heute noch keine Termine erfasst.</p>
-      {% endif %}
     </div>
-  </section>
-  {% endfor %}
+  </div>
 
   <footer class="foot">
     <h2>Methodik &amp; Grenzen</h2>
@@ -465,24 +543,34 @@
     return d.getFullYear() + "-" + mm + "-" + dd;
   }
 
-  function aktualisiere() {
-    var heute = heuteIso();
+  function aktivesGenre() {
     var aktiv = document.querySelector(".legend-item.active");
-    var aktivesGenre = aktiv ? aktiv.dataset.genre : "alle";
+    return aktiv ? aktiv.dataset.genre : "alle";
+  }
+
+  // Reine Genre-Sichtbarkeit auf einer Liste von .entry-Elementen -- von
+  // beiden Ansichten geteilt, damit der Legend-Filter in beiden gleich wirkt.
+  function filtereEintraege(eintraege, genre) {
+    var sichtbar = 0;
+    eintraege.forEach(function (eintrag) {
+      var passt = genre === "alle" || eintrag.dataset.genre === genre;
+      eintrag.style.display = passt ? "" : "none";
+      if (passt) sichtbar++;
+    });
+    return sichtbar;
+  }
+
+  function aktualisiereEinzel() {
+    var heute = heuteIso();
+    var genre = aktivesGenre();
     // Getrennt von 'zeigen': Heute zaehlt als sichtbarer TAG auch leer, aber
     // nicht als sichtbarer TERMIN -- sonst zeigt der Leer-Hinweis nie mehr an,
     // dass ein Genre-Filter ueberall sonst nichts trifft.
     var sichtbareEintraegeGesamt = 0;
 
-    document.querySelectorAll(".day").forEach(function (tag) {
+    document.querySelectorAll("#ansicht-einzel .day").forEach(function (tag) {
       var istVergangen = tag.dataset.date < heute;
-      var sichtbareEintraege = 0;
-
-      tag.querySelectorAll(".entry").forEach(function (eintrag) {
-        var passt = aktivesGenre === "alle" || eintrag.dataset.genre === aktivesGenre;
-        eintrag.style.display = passt ? "" : "none";
-        if (passt) sichtbareEintraege++;
-      });
+      var sichtbareEintraege = filtereEintraege(tag.querySelectorAll(".entry"), genre);
 
       var istHeute = tag.dataset.date === heute;
       tag.classList.toggle("today-live", istHeute);
@@ -500,6 +588,21 @@
     if (hinweis) hinweis.style.display = sichtbareEintraegeGesamt ? "none" : "block";
   }
 
+  function aktualisiereRegelmaessig() {
+    var sichtbar = filtereEintraege(
+      document.querySelectorAll("#ansicht-regelmaessig .entry"), aktivesGenre());
+    var hinweis = document.getElementById("leer-gefiltert-regelmaessig");
+    if (hinweis) hinweis.style.display = sichtbar ? "none" : "block";
+  }
+
+  // Haelt beide Ansichten aktuell, unabhaengig davon, welche gerade sichtbar
+  // ist -- so bleibt der Genre-Filter beim Umschalten des Tabs konsistent,
+  // ohne dass der Tab-Wechsel selbst neu filtern muesste.
+  function aktualisiere() {
+    aktualisiereEinzel();
+    aktualisiereRegelmaessig();
+  }
+
   document.querySelectorAll(".legend-item").forEach(function (btn) {
     btn.addEventListener("click", function () {
       document.querySelectorAll(".legend-item").forEach(function (b) {
@@ -507,6 +610,21 @@
       });
       btn.classList.add("active");
       aktualisiere();
+    });
+  });
+
+  document.querySelectorAll(".view-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".view-btn").forEach(function (b) {
+        b.classList.remove("active");
+      });
+      btn.classList.add("active");
+      var regelmaessig = btn.dataset.view === "regelmaessig";
+      // Explizit "block", nicht "" -- #ansicht-regelmaessig hat display:none
+      // als Stylesheet-Regel (s.o.), "" wuerde nur das Inline-Style loeschen
+      // und diese Regel wieder greifen lassen, nicht zum Anzeigen zwingen.
+      document.getElementById("ansicht-einzel").style.display = regelmaessig ? "none" : "block";
+      document.getElementById("ansicht-regelmaessig").style.display = regelmaessig ? "block" : "none";
     });
   });
 

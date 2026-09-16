@@ -56,22 +56,25 @@ TEMPLATE_ORDNER = os.path.join(HIER, "templates")
 
 
 def _pfade(spur=""):
-    """Namenspraefix -> (termine, domain_log, domains, ausgabe). Leer = Produktion.
+    """Namenspraefix -> (termine, domain_log, domains, ausgabe, regelmaessig).
+    Leer = Produktion.
 
     Gegenstueck zu _pfade() in domain_lauf.py: '--spur test' rendert
     ausgaben/test-termine.json nach test-index.html, ohne index.html anzufassen.
     Bewusst dupliziert statt geteilt -- der gemeinsame Import waere
     termine_aus_domain.py, und das soll laut Dateikopf EIGENSTAENDIG bleiben und
-    kennt weder termine.json noch index.html.
+    kennt weder termine.json noch index.html. regelmaessig folgt demselben
+    Namensmuster wie in domain_lauf.py._pfade().
     """
     p = f"{spur}-" if spur else ""
     return (os.path.join(PROJEKT, "ausgaben", f"{p}termine.json"),
             os.path.join(PROJEKT, "ausgaben", f"{p}domain_log.json"),
             os.path.join(PROJEKT, "eingaben", f"{p}domains.md"),
-            os.path.join(PROJEKT, f"{p}index.html"))
+            os.path.join(PROJEKT, f"{p}index.html"),
+            os.path.join(PROJEKT, "ausgaben", f"{p}termine_regelmaessig.json"))
 
 
-TERMINE, DOMAIN_LOG, DOMAINS, AUSGABE = _pfade()
+TERMINE, DOMAIN_LOG, DOMAINS, AUSGABE, TERMINE_REGELMAESSIG = _pfade()
 
 WOCHENTAGE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]   # date.weekday(): 0=Montag
                                                           # fest verdrahtet statt
@@ -125,11 +128,15 @@ def _lade_json(pfad, vorgabe):
 # bringen -- dieselbe weiche Haltung wie bei den fehlenden Genre-Farben oben.
 _PFLICHT = ("datum", "titel", "genre")
 
+# Regelmaessige Termine haben kein datum, dafuer einen rhythmus (siehe
+# termine_aus_domain.py: pruefe_termine_regelmaessig).
+_PFLICHT_REGELMAESSIG = ("rhythmus", "titel", "genre")
 
-def _nur_gueltige(termine):
+
+def _nur_gueltige(termine, pflicht=_PFLICHT):
     gueltig = []
     for t in termine:
-        fehlt = [f for f in _PFLICHT if not t.get(f)]
+        fehlt = [f for f in pflicht if not t.get(f)]
         if fehlt:
             kennung = t.get("titel") or t.get("datum") or t.get("domain") or "?"
             print(f"WARNUNG: Termin ohne {', '.join(fehlt)} uebersprungen "
@@ -311,6 +318,57 @@ def baue_tage(termine, log, heute):
     return tage
 
 
+# Reihenfolge Mo..So; 'sonnabend' als Synonym auf denselben Index wie 'samstag'.
+_WOCHENTAG_STAEMME = [("montag", 0), ("dienstag", 1), ("mittwoch", 2),
+                      ("donnerstag", 3), ("freitag", 4), ("samstag", 5),
+                      ("sonnabend", 5), ("sonntag", 6)]
+
+
+def _wochentag_index(rhythmus):
+    """rhythmus-Text -> Index Mo=0..So=6, oder 7 als Fallback (kein Wochentag
+    erkannt). Bei mehreren genannten Wochentagen ('dienstags und donnerstags')
+    gewinnt der zuerst im Text genannte, nicht der alphabetisch erste Stamm --
+    das ist die Reihenfolge, die die Seite selbst nennt."""
+    text = _normal(rhythmus)
+    treffer = [(text.find(stamm), idx) for stamm, idx in _WOCHENTAG_STAEMME
+               if stamm in text]
+    return min(treffer)[1] if treffer else 7
+
+
+def baue_regelmaessig(eintraege, log):
+    """Flache Liste regelmaessiger Termine -> sortierte Liste von Anzeige-Dicts.
+
+    Keine Tagesgruppierung wie bei baue_tage() -- ein regelmaessiger Termin
+    hat kein datum. Sortiert nach erkanntem Wochentag im rhythmus-Text, dann
+    uhrzeit, dann rhythmus, dann titel: stabil und lesbar, ohne die Uhrzeit aus
+    Freitext parsen zu muessen (uhrzeit ist seit dem Prompt-Zusatz vom
+    16.09.2026 ein eigenes, zuverlaessiges Feld).
+
+    Quellen-Dublettenerkennung UEBER Domains (wie _gruppiere() fuer
+    termine.json) findet hier bewusst NICHT statt: _selbes_event() haengt am
+    datum, das regelmaessigen Terminen fehlt. Dieselbe Reihe, von zwei Domains
+    gemeldet, koennte doppelt erscheinen -- seltener Fall; das Risiko falscher
+    Zusammenfuehrungen (aehnliche Titel, verschiedene Orte, ohne Datumsanker)
+    waere teurer als diese seltene Dublette.
+    """
+    gerendert = []
+    for t in sorted(eintraege, key=lambda t: (
+            _wochentag_index(t.get("rhythmus") or ""),
+            t.get("uhrzeit") or "99:99", t.get("rhythmus") or "",
+            t.get("titel") or "")):
+        slug, var = GENRE_FARBEN.get(t["genre"], GENRE_FARBEN["Sonstiges"])
+        gerendert.append({
+            "titel": t["titel"], "uhrzeit": t.get("uhrzeit") or "",
+            "kuenstler": t.get("kuenstler") or "", "ort": t.get("ort") or "",
+            "beschreibung": t.get("beschreibung") or "",
+            "rhythmus": t.get("rhythmus") or "",
+            "genre": ANZEIGE_NAME.get(t["genre"], t["genre"]),
+            "genre_slug": slug, "genre_farbe": var,
+            "link": (link := _link(t, log)), "link_label": _host(link),
+        })
+    return gerendert
+
+
 def main():
     zerleger = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -320,13 +378,17 @@ def main():
                                "nach test-index.html. Ohne Angabe: die "
                                "Produktivdateien")
     argumente = zerleger.parse_args()
-    termine_datei, domain_log_datei, domains_datei, ausgabe = _pfade(argumente.spur)
+    (termine_datei, domain_log_datei, domains_datei, ausgabe,
+     regelmaessig_datei) = _pfade(argumente.spur)
 
     heute = dt.date.today()
     roh = _nur_gueltige(_lade_json(termine_datei, []))
     termine = _gruppiere(roh)
     log = _lade_json(domain_log_datei, {})
     domains = _lade_domains(domains_datei)
+    roh_regelmaessig = _nur_gueltige(_lade_json(regelmaessig_datei, []),
+                                     _PFLICHT_REGELMAESSIG)
+    regelmaessig = baue_regelmaessig(roh_regelmaessig, log)
 
     genres = [{"name": ANZEIGE_NAME.get(g, g),
                "farbe": GENRE_FARBEN.get(g, GENRE_FARBEN["Sonstiges"])[1],
@@ -340,6 +402,8 @@ def main():
     html = vorlage.render(
         genres=genres, days=tage, domains=domains,
         entry_count=len(termine), is_empty=not termine,
+        regelmaessig_entries=regelmaessig, regelmaessig_count=len(regelmaessig),
+        regelmaessig_is_empty=not regelmaessig,
         generated_at=heute.strftime("%d.%m.%Y"),
     )
 
@@ -349,7 +413,8 @@ def main():
     print(f"{len(termine)} Termine"
           + (f" ({len(roh)} vor Gruppierung, {entfernt} Quellen-Dublette(n))"
              if entfernt else "")
-          + f", {len(tage)} Tage -> {ausgabe}")
+          + f", {len(tage)} Tage, {len(regelmaessig)} regelmaessige "
+          + f"-> {ausgabe}")
     return 0
 
 

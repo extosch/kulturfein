@@ -350,8 +350,13 @@ nur dadurch enden, dass sie von der Seite verschwindet. Die regelmäßigen Termi
 vollständig **ersetzt**. Sicher ist das, weil `scanne()` bei Fehlschlag `None` liefert: ein
 misslungener Abruf löscht nichts.
 
-Noch **nicht** angezeigt — `baue_webseite.py` liest `termine_regelmaessig.json` nicht. Erst sehen, was
-hereinkommt, dann über die Darstellung entscheiden.
+Seit 16.09.2026 **angezeigt**: `baue_webseite.py` liest `termine_regelmaessig.json` und rendert
+sie als eigenen Reiter „Regelmäßige Termine" neben „Einzeltermine" (Umschalter über der
+Genre-Legende, reines CSS/JS, kein Framework). Sortiert wird nach Wochentag (erkannt am
+`rhythmus`-Text, acht feste deutsche Wochentag-Stämme), dann `uhrzeit`, dann `rhythmus`, dann
+`titel` — keine Tagesgruppierung, da kein `datum` vorliegt. Der Genre-Filter wirkt in beiden
+Reitern gleich. Quellen-Dublettenerkennung über Domains (wie bei `termine.json`) gibt es hier
+bewusst nicht: `_selbes_event()` braucht ein `datum` als Anker, das regelmäßigen Terminen fehlt.
 
 ### Regionsfilter „Freiburg und Umgebung"
 
