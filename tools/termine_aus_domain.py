@@ -385,6 +385,16 @@ def auftrag(heute):
     kam kein einziger Einzeltermin abhanden, und tibet-kailash-haus lieferte acht
     brauchbare regelmaessige. Danach ist die alte Fassung geloescht worden --
     zwei Prompt-Fassungen driften auseinander, sobald jemand nur eine haertet.
+
+    Der Satz zu uhrzeit bei rhythmus kam am 16.09.2026 dazu, nach demselben
+    Verfahren kurz hinter einem Schalter gemessen. tibet-kailash-haus.de
+    lieferte Reihen, deren rhythmus eine Uhrzeit woertlich enthielt
+    ('Dienstag, 20:00 - 22:00 Uhr'), aber deren separates uhrzeit-Feld leer
+    blieb -- die allgemeine Anweisung dazu (oben, "Uhrzeit als HH:MM") wird fuer
+    termine_regelmaessig offenbar nicht mitgelesen, weil rhythmus als EINE
+    wortgetreue Passage verstanden wird, in die alles Zeitliche hineingehoert.
+    Zwei Laeufe auf identischem Text (2 x 14 Reihen) zeigten uhrzeit danach
+    zuverlaessig befuellt, rhythmus dabei unveraendert wortgleich.
     """
     return (
         f"Heute ist der {heute:%d.%m.%Y}. Lies den folgenden Text von einer "
@@ -438,6 +448,9 @@ def auftrag(heute):
         "Termin am 08.09.26'), ein Zeitraum ('von Mai bis Juli'). Steht so "
         "etwas da, ist es entweder ein Termin fuer die andere Liste oder gar "
         "nichts — aber kein regelmaessiger Termin.\n\n"
+        "Enthaelt der rhythmus eine Uhrzeit, trage sie zusaetzlich als HH:MM in "
+        "uhrzeit ein — sie bleibt dabei auch woertlich im rhythmus-Text "
+        "stehen.\n\n"
         "Jedes zurueckgegebene Datum muss WORTWOERTLICH im Text stehen. Rechne "
         "nichts aus. Ein Zeitraum ('13.09.2026 bis 08.11.2026') ist EINE Angabe "
         "und keine Reihe von Einzelterminen — loese ihn nicht in Wochentage auf. "

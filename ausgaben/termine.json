@@ -1,222 +1,5 @@
 [
   {
-    "datum": "2026-09-01",
-    "uhrzeit": "20:15",
-    "titel": "Konzert 11 - Franz Josef Stoiber",
-    "kuenstler": "Franz Josef Stoiber",
-    "ort": "Freiburger Münster",
-    "beschreibung": "Internationales Orgelkonzert im Freiburger Münster.",
-    "genre": "Konzert",
-    "fundstelle": "https://www.muensterorgelkonzerte.de/",
-    "domain": "muensterorgelkonzerte.de"
-  },
-  {
-    "datum": "2026-09-05",
-    "uhrzeit": "11:30",
-    "titel": "Orgelmusik zur Marktzeit",
-    "kuenstler": "Eiko Maria Yoshimura",
-    "ort": "Freiburger Münster",
-    "beschreibung": "Kurze Orgelmusik zur Marktzeit im Freiburger Münster.",
-    "genre": "Konzert",
-    "fundstelle": "https://www.muensterorgelkonzerte.de/",
-    "domain": "muensterorgelkonzerte.de"
-  },
-  {
-    "datum": "2026-09-08",
-    "uhrzeit": "18:00",
-    "ort": "Schopf2 Kulturzentrum",
-    "beschreibung": "Hannah Lübbert liest aus ihrem Buch über Zukunftsängste und stellt sich der Diskussion. Musikalische Begleitung von Dominik Matzka. Optional anschließend Angst-Labor.",
-    "genre": "Lesung",
-    "domain": "kreativpioniere-freiburg.de"
-  },
-  {
-    "datum": "2026-09-08",
-    "uhrzeit": "20:15",
-    "titel": "Konzert 12 - Kay Johannsen",
-    "kuenstler": "Kay Johannsen",
-    "ort": "Freiburger Münster",
-    "beschreibung": "Internationales Orgelkonzert im Freiburger Münster.",
-    "genre": "Konzert",
-    "fundstelle": "https://www.muensterorgelkonzerte.de/",
-    "domain": "muensterorgelkonzerte.de"
-  },
-  {
-    "datum": "2026-09-09",
-    "uhrzeit": "20:00",
-    "titel": "Eröffnungskonzert der Ensemble-Akademie 2026",
-    "kuenstler": "",
-    "ort": "Freiburg, Christuskirche",
-    "beschreibung": "",
-    "genre": "Konzert",
-    "fundstelle": "https://barockorchester.de/konzertkalender/",
-    "domain": "barockorchester.de"
-  },
-  {
-    "datum": "2026-09-09",
-    "uhrzeit": "20:00",
-    "titel": "Ensemble-Akademie Eröffnungskonzert",
-    "kuenstler": "Ensemble Recherche, Freiburger Barockorchester",
-    "ort": "Christuskirche Maienstraße, Freiburg i.Br.",
-    "beschreibung": "Eröffnungskonzert mit Mitgliedern des Ensemble Recherche und des Freiburger Barockorchester im Rahmen der Ensemble-Akademie Freiburg.",
-    "genre": "Konzert",
-    "fundstelle": "https://www.ensemble-recherche.de/event/ensemble-akademie-eroeffnungskonzert",
-    "domain": "ensemble-recherche.de"
-  },
-  {
-    "datum": "2026-09-09",
-    "uhrzeit": "20:00",
-    "titel": "Eröffnungskonzert der Ensemble-Akademie Freiburg",
-    "kuenstler": "Ensemble Recherche, Freiburger Barockorchester",
-    "ort": "Christuskirche Freiburg",
-    "beschreibung": "Eröffnungskonzert mit Dozierenden zweier Klangkörper, die die Musik der Akademiewoche vorstellen.",
-    "genre": "Konzert",
-    "fundstelle": "https://mehrklang-freiburg.de/events",
-    "domain": "mehrklang-freiburg.de"
-  },
-  {
-    "datum": "2026-09-10",
-    "uhrzeit": "19:00",
-    "titel": "Klangparcours am Waldsee – Wenn Klänge über das Wasser wandern",
-    "kuenstler": "",
-    "ort": "Waldsee",
-    "beschreibung": "Klangperformance unter freiem Himmel, die Naturklänge und Musik vereint.",
-    "genre": "Konzert",
-    "fundstelle": "https://mehrklang-freiburg.de/events",
-    "domain": "mehrklang-freiburg.de"
-  },
-  {
-    "datum": "2026-09-10",
-    "uhrzeit": "19:30",
-    "titel": "Orgelführungen im Freiburger Münster",
-    "kuenstler": "",
-    "ort": "Freiburger Münster",
-    "beschreibung": "Führung durch die Orgelanlage des Freiburger Münsters mit vier Orgeln und Auxiliarwerk.",
-    "genre": "Vortrag",
-    "fundstelle": "https://www.muensterorgelkonzerte.de/aktuelles/kalender",
-    "domain": "muensterorgelkonzerte.de"
-  },
-  {
-    "datum": "2026-09-11",
-    "uhrzeit": "",
-    "titel": "Quellenwochen(-ende) Erholung für Geist, Körper und Seele",
-    "kuenstler": "",
-    "ort": "Kloster St. Lioba, Freiburg-Günterstal",
-    "beschreibung": "Quellenwochen mit Gesprächsrunden und Impulsen für den Alltag.",
-    "genre": "Spirituell",
-    "fundstelle": "https://kloster-st-lioba.de/veranstaltungen-im-kloster-st-lioba-3",
-    "domain": "kloster-st-lioba.de"
-  },
-  {
-    "datum": "2026-09-12",
-    "uhrzeit": "11:30",
-    "titel": "Orgelmusik zur Marktzeit",
-    "kuenstler": "Felix Ketterer",
-    "ort": "Freiburger Münster",
-    "beschreibung": "Kurze Orgelmusik zur Marktzeit im Freiburger Münster.",
-    "genre": "Konzert",
-    "fundstelle": "https://www.muensterorgelkonzerte.de/aktuelles/kalender",
-    "domain": "muensterorgelkonzerte.de"
-  },
-  {
-    "datum": "2026-09-12",
-    "uhrzeit": "19:00",
-    "titel": "Ensemble-Akademie Abschlusskonzert",
-    "kuenstler": "",
-    "ort": "Christuskirche Maienstraße, Freiburg i.Br.",
-    "beschreibung": "Abschlusskonzert mit Teilnehmer*innen der Ensemble-Akademie im Rahmen der Akademie-Woche.",
-    "genre": "Konzert",
-    "fundstelle": "https://www.ensemble-recherche.de/event/ensemble-akademie-abschlusskonzert",
-    "domain": "ensemble-recherche.de"
-  },
-  {
-    "datum": "2026-09-12",
-    "uhrzeit": "19:00",
-    "titel": "Abschlusskonzert der Ensemble-Akademie Freiburg",
-    "kuenstler": "Freiburger Barockorchester, Ensemble Recherche",
-    "ort": "Christuskirche Freiburg",
-    "beschreibung": "",
-    "genre": "Konzert",
-    "fundstelle": "https://mehrklang-freiburg.de/events",
-    "domain": "mehrklang-freiburg.de"
-  },
-  {
-    "datum": "2026-09-12",
-    "uhrzeit": "19:30",
-    "titel": "SOULS - RHYTHMS OF SILENCE",
-    "kuenstler": "Murat Coşkun, Beatriz Picas",
-    "ort": "Freiburg Kloster St. Lioba",
-    "beschreibung": "Duo-Konzert mit Rahmentrommeln, Percussion und Cello",
-    "genre": "Konzert",
-    "fundstelle": "https://www.murat-coskun.eu/",
-    "domain": "murat-coskun.eu"
-  },
-  {
-    "datum": "2026-09-13",
-    "uhrzeit": "11:00",
-    "titel": "Klangparcours am Waldsee – Wenn Klänge über das Wasser wandern",
-    "kuenstler": "",
-    "ort": "Waldsee",
-    "beschreibung": "Klangperformance unter freiem Himmel, die Naturklänge und Musik vereint.",
-    "genre": "Konzert",
-    "fundstelle": "https://mehrklang-freiburg.de/events",
-    "domain": "mehrklang-freiburg.de"
-  },
-  {
-    "datum": "2026-09-13",
-    "uhrzeit": "11:30",
-    "titel": "Duo \"But Five\" mit Nina Brackrock (Tenorsaxophon, Gesang und Piano) und Philipp Pöhlert-Brackrock (Posaune, Trompete, Gitarre und Bass) Vernissage Helga Weihs",
-    "kuenstler": "Duo \"But Five\"",
-    "ort": "Ausstellungshalle der Stiftung in Freiburg-Zähringen, Pochgasse 73",
-    "beschreibung": "",
-    "genre": "Konzert",
-    "fundstelle": "https://stiftung-konkrete-kunst.de/veranstaltungen/veranstaltungen_2026.html",
-    "domain": "stiftung-konkrete-kunst.de"
-  },
-  {
-    "datum": "2026-09-13",
-    "uhrzeit": "18:00",
-    "titel": "SOULS",
-    "kuenstler": "Murat Coşkun, Beatriz Picas",
-    "ort": "Nimburg Bergkirche",
-    "beschreibung": "Duo-Konzert mit Rahmentrommeln, Percussion und Cello",
-    "genre": "Konzert",
-    "fundstelle": "https://www.murat-coskun.eu/on-tour",
-    "domain": "murat-coskun.eu"
-  },
-  {
-    "datum": "2026-09-13",
-    "uhrzeit": "19:00",
-    "titel": "Konzert bitter_sweet",
-    "kuenstler": "Ensemble Scope",
-    "ort": "Aktionstheater PAN.OPTIKUM",
-    "beschreibung": "Erkundung von Sehnsucht und gegenwärtigen Utopien zwischen Hoffnung und Ernüchterung.",
-    "genre": "Konzert",
-    "fundstelle": "https://mehrklang-freiburg.de/events",
-    "domain": "mehrklang-freiburg.de"
-  },
-  {
-    "datum": "2026-09-14",
-    "uhrzeit": "",
-    "titel": "Quellenwochen(-ende) Erholung für Geist, Körper und Seele",
-    "kuenstler": "",
-    "ort": "Kloster St. Lioba, Freiburg-Günterstal",
-    "beschreibung": "Quellenwochen mit Gesprächsrunden und Impulsen für den Alltag.",
-    "genre": "Spirituell",
-    "fundstelle": "https://kloster-st-lioba.de/veranstaltungen-im-kloster-st-lioba-3",
-    "domain": "kloster-st-lioba.de"
-  },
-  {
-    "datum": "2026-09-15",
-    "uhrzeit": "20:15",
-    "titel": "Konzert 13 - Nicolas Berndt",
-    "kuenstler": "Nicolas Berndt",
-    "ort": "Freiburger Münster",
-    "beschreibung": "Internationales Orgelkonzert im Freiburger Münster.",
-    "genre": "Konzert",
-    "fundstelle": "https://www.muensterorgelkonzerte.de/",
-    "domain": "muensterorgelkonzerte.de"
-  },
-  {
     "datum": "2026-09-16",
     "uhrzeit": "",
     "titel": "Lokhalle Feierabend",
@@ -273,6 +56,17 @@
   },
   {
     "datum": "2026-09-18",
+    "uhrzeit": "19:00",
+    "titel": "Mythologie in der TCM: Niere",
+    "kuenstler": "Harald Pfeffer",
+    "ort": "Tibet Kailash Haus",
+    "beschreibung": "",
+    "genre": "Vortrag",
+    "fundstelle": "https://tibet-kailash-haus.de/veranstaltungen",
+    "domain": "tibet-kailash-haus.de"
+  },
+  {
+    "datum": "2026-09-18",
     "uhrzeit": "19:30",
     "titel": "\"Brachland\" – ein Oratorium",
     "kuenstler": "",
@@ -323,6 +117,17 @@
     "beschreibung": "Szenische Lesung von autobiographischen Essays früher Nationalsozialistinnen mit Analyse von Historikerin Katja Kosubek.",
     "genre": "Lesung",
     "domain": "kreativpioniere-freiburg.de"
+  },
+  {
+    "datum": "2026-09-22",
+    "uhrzeit": "18:00",
+    "titel": "Einstiegskurs Meditation mit Wilfried Pfeffer",
+    "kuenstler": "Wilfried Pfeffer",
+    "ort": "Tibet Kailash Haus",
+    "beschreibung": "",
+    "genre": "Workshop",
+    "fundstelle": "https://tibet-kailash-haus.de/veranstaltungen",
+    "domain": "tibet-kailash-haus.de"
   },
   {
     "datum": "2026-09-22",
@@ -390,6 +195,17 @@
     "domain": "muensterorgelkonzerte.de"
   },
   {
+    "datum": "2026-09-27",
+    "uhrzeit": "11:00",
+    "titel": "Sonntagsmatinee mit Tenzin Lodoe",
+    "kuenstler": "Tenzin Lodoe",
+    "ort": "Tibet Kailash Haus",
+    "beschreibung": "Onlinevortrag zu Buddhismus im 21. Jahrhundert, per Videokonferenz übertragen.",
+    "genre": "Vortrag",
+    "fundstelle": "https://tibet-kailash-haus.de/veranstaltungen",
+    "domain": "tibet-kailash-haus.de"
+  },
+  {
     "datum": "2026-09-29",
     "uhrzeit": "20:15",
     "titel": "Konzert 15 - Orgel und Harfe",
@@ -421,6 +237,17 @@
     "genre": "Sonstiges",
     "fundstelle": "https://www.murat-coskun.eu/on-tour",
     "domain": "murat-coskun.eu"
+  },
+  {
+    "datum": "2026-10-04",
+    "uhrzeit": "11:00",
+    "titel": "Klang der Stille",
+    "kuenstler": "Yifeng, Shashanka",
+    "ort": "Tibet Kailash Haus",
+    "beschreibung": "Live-Klangreise mit Klangschalen und Bansuri-Flöte.",
+    "genre": "Konzert",
+    "fundstelle": "https://tibet-kailash-haus.de/veranstaltungen",
+    "domain": "tibet-kailash-haus.de"
   },
   {
     "datum": "2026-10-08",

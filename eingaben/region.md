@@ -123,3 +123,4 @@ Depot.K
 ArTik
 Gruenhof
 Grünhof
+Tibet Kailash Haus
