@@ -157,6 +157,45 @@ def _lade_domains(pfad):
         return [k for z in datei if (k := z.split("#", 1)[0].strip())]
 
 
+# Domains, die einer einzelnen Person gehoeren (eigener Instagram-Account,
+# eigene Webseite), nicht spur-abhaengig -- eine strukturelle Zuordnung wie
+# region.md/tour-domains.md in termine_aus_domain.py, kein Testdatum.
+PERSONEN_DATEI = os.path.join(PROJEKT, "eingaben", "personen-domains.md")
+
+
+def _lade_personen(pfad):
+    """eingaben/personen-domains.md -> {domain (klein): Name}; leer, wenn die
+    Datei fehlt. Format 'domain = Name', '#' kommentiert.
+    """
+    if not os.path.exists(pfad):
+        return {}
+    personen = {}
+    with open(pfad, encoding="utf-8") as datei:
+        for zeile in datei:
+            zeile = zeile.split("#", 1)[0].strip()
+            if not zeile or "=" not in zeile:
+                continue
+            domain, name = zeile.split("=", 1)
+            personen[domain.strip().lower()] = name.strip()
+    return personen
+
+
+def _mit_person(kuenstler, domain, personen):
+    """kuenstler-String, ergaenzt um die Person aus personen-domains.md,
+    falls die Domain ihr gehoert und ihr Name noch nicht drin steht.
+
+    Reine Darstellungsanreicherung wie _gruppiere() -- termine.json bleibt
+    unveraendert. Anlass: das Modell nennt eine Person, die einen Post nur
+    einmal als Bio/Signatur unterschreibt (statt im Termin-Absatz selbst),
+    nicht zuverlaessig -- das ist aber keine Interpretationsfrage, sondern
+    eine feste Tatsache der Domain, die nicht neu erraten werden muss.
+    """
+    name = personen.get((domain or "").lower())
+    if not name or (kuenstler and _normal(name) in _normal(kuenstler)):
+        return kuenstler
+    return f"{kuenstler}, {name}" if kuenstler else name
+
+
 def _link(termin, log):
     """Termin -> Adresse zum Anklicken.
 
@@ -279,7 +318,7 @@ def _gruppiere(termine):
     return [max(gruppe, key=_vollstaendigkeit) for gruppe in cluster]
 
 
-def baue_tage(termine, log, heute):
+def baue_tage(termine, log, heute, personen):
     """Flache Terminliste -> [{weekday, date, is_today, entries: [...]}, ...]
 
     Gruppiert nach datum, absteigend... nein, aufsteigend nach Datum, und
@@ -303,7 +342,8 @@ def baue_tage(termine, log, heute):
             slug, var = GENRE_FARBEN.get(t["genre"], GENRE_FARBEN["Sonstiges"])
             gerendert.append({
                 "titel": t["titel"], "uhrzeit": t.get("uhrzeit") or "",
-                "kuenstler": t.get("kuenstler") or "", "ort": t.get("ort") or "",
+                "kuenstler": _mit_person(t.get("kuenstler") or "", t.get("domain"), personen),
+                "ort": t.get("ort") or "",
                 "beschreibung": t.get("beschreibung") or "",
                 "genre": ANZEIGE_NAME.get(t["genre"], t["genre"]),
                 "genre_slug": slug, "genre_farbe": var,
@@ -335,7 +375,7 @@ def _wochentag_index(rhythmus):
     return min(treffer)[1] if treffer else 7
 
 
-def baue_regelmaessig(eintraege, log):
+def baue_regelmaessig(eintraege, log, personen):
     """Flache Liste regelmaessiger Termine -> sortierte Liste von Anzeige-Dicts.
 
     Keine Tagesgruppierung wie bei baue_tage() -- ein regelmaessiger Termin
@@ -359,7 +399,8 @@ def baue_regelmaessig(eintraege, log):
         slug, var = GENRE_FARBEN.get(t["genre"], GENRE_FARBEN["Sonstiges"])
         gerendert.append({
             "titel": t["titel"], "uhrzeit": t.get("uhrzeit") or "",
-            "kuenstler": t.get("kuenstler") or "", "ort": t.get("ort") or "",
+            "kuenstler": _mit_person(t.get("kuenstler") or "", t.get("domain"), personen),
+            "ort": t.get("ort") or "",
             "beschreibung": t.get("beschreibung") or "",
             "rhythmus": t.get("rhythmus") or "",
             "genre": ANZEIGE_NAME.get(t["genre"], t["genre"]),
@@ -386,15 +427,16 @@ def main():
     termine = _gruppiere(roh)
     log = _lade_json(domain_log_datei, {})
     domains = _lade_domains(domains_datei)
+    personen = _lade_personen(PERSONEN_DATEI)
     roh_regelmaessig = _nur_gueltige(_lade_json(regelmaessig_datei, []),
                                      _PFLICHT_REGELMAESSIG)
-    regelmaessig = baue_regelmaessig(roh_regelmaessig, log)
+    regelmaessig = baue_regelmaessig(roh_regelmaessig, log, personen)
 
     genres = [{"name": ANZEIGE_NAME.get(g, g),
                "farbe": GENRE_FARBEN.get(g, GENRE_FARBEN["Sonstiges"])[1],
                "slug": GENRE_FARBEN.get(g, GENRE_FARBEN["Sonstiges"])[0]}
               for g in GENRES]
-    tage = baue_tage(termine, log, heute)
+    tage = baue_tage(termine, log, heute, personen)
 
     env = Environment(loader=FileSystemLoader(TEMPLATE_ORDNER), autoescape=True,
                       trim_blocks=True, lstrip_blocks=True)

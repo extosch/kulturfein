@@ -595,6 +595,16 @@ Unterseite), mit Fallback auf `domain_log.json → seiten[0]`, wenn sie fehlt. A
 Beschriftung dient die Domain (`mehrklang-freiburg.de ↗`), die volle URL steht im
 `title`-Tooltip.
 
+**Personendomains** (`eingaben/personen-domains.md`, Format `domain = Name`): trägt den
+Namen einer Einzelperson deterministisch bei `kuenstler` nach, wenn die Domain ihr eigener
+Account/ihre eigene Seite ist. Anlass: `instagram.com/betz.lucie/` signiert Posts nur einmal
+am Ende mit ihrem Namen, nicht im Absatz zum einzelnen Termin — das Modell verknüpft das nicht
+zuverlässig (zwei Testläufe auf identischem Text, einmal mit, einmal ohne ihren Namen). Statt
+das dem Modell abzuringen, ist die Domain-Zuordnung eine feste Tatsache, keine
+Interpretationsfrage, und wird wie `_gruppiere()` rein beim Rendern angewendet —
+`termine.json` bleibt unangetastet. Bewusst in Kauf genommen: teilt die Person ein
+Fremd-Event ohne eigene Beteiligung, würde sie trotzdem als `kuenstler` erscheinen.
+
 Abhängigkeiten: `requests`, `beautifulsoup4`, `lxml`; `jinja2` für `baue_webseite.py`;
 `pychrome` **optional**, nur für Social-Hosts (siehe „Social-Hosts brauchen einen Browser").
 
